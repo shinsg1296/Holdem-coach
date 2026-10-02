@@ -163,7 +163,7 @@ footer{font-size:11px;color:var(--muted)}
   <div id="resultBox"></div>
   <section class="coach" id="coach"></section>
   <div class="totals" id="totals"></div>
-  <footer>승률은 상대 카드를 모르니, 상대가 지금까지 한 액션(오픈·3벳·콜·벳)과 보드를 보고 "이런 패들을 들고 있겠다"를 추정한 뒤 그 패들과 수천 번 가상으로 붙여 본 결과입니다. 블러프·세미블러프는 상대가 폴드할 확률까지 넣은 기대값으로 판단하고, 상대가 한 명이면 턴·리버 베팅까지 시뮬레이션합니다. 상대가 여러 명이면 남은 베팅 없이 쇼다운까지 간다고 단순화합니다. 상대 성향은 코치 계산에 쓰지 않습니다. 해설 아래 입력창으로 그 결정에 대해 Claude에게 바로 질문하고 토론할 수 있습니다(본인 Claude 사용량이 쓰입니다). 리바인은 1회 30,000칩씩, 총 150,000까지(5번) 가능합니다. AI가 파산하면 30,000으로 다시 채워집니다. 인원을 바꾸면 새 세션이 시작됩니다.</footer>
+  <footer>승률은 상대 카드를 모르니, 상대가 지금까지 한 액션(오픈·3벳·콜·벳)과 보드를 보고 "이런 패들을 들고 있겠다"를 추정한 뒤 그 패들과 수천 번 가상으로 붙여 본 결과입니다. 블러프·세미블러프는 상대가 폴드할 확률까지 넣은 기대값으로 판단하고, 상대가 한 명이면 턴·리버 베팅까지 시뮬레이션합니다. 상대가 여러 명이면 남은 베팅 없이 쇼다운까지 간다고 단순화합니다. 상대 성향은 코치 계산에 쓰지 않습니다. 해설 아래 입력창으로 그 결정에 대해 Claude에게 바로 질문하고 토론할 수 있습니다(본인 Claude 사용량이 쓰입니다). 리바인은 1회 30,000칩씩, 총 150,000까지(5번) 가능합니다. AI도 리바인은 1회 30,000칩씩 총 150,000까지이고, 다 쓰고 파산하면 테이블에서 빠집니다. AI가 모두 빠지면 우승입니다. 인원을 바꾸면 새 세션이 시작됩니다.</footer>
 </div>
 
 <script>
@@ -260,7 +260,7 @@ const BOTS=[
 const G={players:[],button:0,board:[],deck:[],street:0,currentBet:0,minRaise:BBA,numRaises:0,
   hand:0,rebuyLeft:REBUY_TOTAL,invested:BUYIN,ticker:'',acting:-1,showdown:false,heroWait:null,advice:null,
   handFb:[],stats:{hands:0,dec:0,good:0,ok:0,bad:0},over:false,winners:new Set(),reloads:0};
-function initPlayers(){G.players=[{name:'나',hero:true,stack:BUYIN},...BOTS.slice(0,NP-1).map(b=>({...b,hero:false,stack:BUYIN}))];G.button=Math.floor(Math.random()*NP)}
+function initPlayers(){G.players=[{name:'나',hero:true,stack:BUYIN},...BOTS.slice(0,NP-1).map(b=>({...b,hero:false,stack:BUYIN,rebuyLeft:REBUY_TOTAL}))];G.button=Math.floor(Math.random()*NP)}
 const NPN=()=>G.players.length;
 const EARLY={1:['UTG'],2:['UTG','CO'],3:['UTG','HJ','CO'],4:['UTG','MP','HJ','CO'],5:['UTG','UTG+1','MP','HJ','CO']};
 const sbIdx=()=>NPN()===2?G.button:(G.button+1)%NPN();
@@ -534,14 +534,15 @@ function newDeck(){const d=[...Array(52).keys()];for(let i=51;i>0;i--){const j=M
 
 async function playHand(){
   G.hand++;G.stats.hands++;G.showdown=false;G.winners=new Set();G.handFb=[];G.focus=0;G.result=null;G.actLog=[];$('resultBox').innerHTML='';
-  G.players.forEach(p=>{if(!p.hero&&p.stack<=0){p.stack=BUYIN;p.reloaded=true}else p.reloaded=false});
+  for(let j=G.players.length-1;j>=1;j--)if(G.players[j].eliminated){G.players.splice(j,1);const N=G.players.length;
+    if(j<G.button)G.button--;else if(j===G.button)G.button=(j-1+N)%N}
+  if(G.button>=G.players.length)G.button=0;
   G.button=(G.button+1)%NPN();G.deck=newDeck();G.board=[];G.street=0;G.currentBet=0;G.minRaise=BBA;G.numRaises=0;
   G.players.forEach(p=>Object.assign(p,{cards:[G.deck.pop(),G.deck.pop()],folded:false,allIn:false,bet:0,total:0,acted:false,act:'',preLevel:0,calledLevel:0,limped:false,preShove:false,prePos:'',preBehind:0,aggPost:false,postCalled:false}));
   const sbI=sbIdx(),bbI=bbIdx();put(G.players[sbI],SBA);put(G.players[bbI],BBA);
   G.players[sbI].act='SB '+fmt(G.players[sbI].bet);G.players[bbI].act='BB '+fmt(G.players[bbI].bet);
   G.currentBet=BBA;G.actLog.push(`블라인드: ${G.players[sbI].hero?'나':G.players[sbI].name}(SB) ${fmt(G.players[sbI].bet)}, ${G.players[bbI].hero?'나':G.players[bbI].name}(BB) ${fmt(G.players[bbI].bet)}`);
-  const rl2=G.players.filter(p=>p.reloaded).map(p=>p.name);
-  G.ticker=`핸드 #${G.hand} · 버튼 <strong>${G.players[G.button].name}</strong>`+(rl2.length?` · ${rl2.join(', ')} 30,000 재충전`:'');
+  G.ticker=`핸드 #${G.hand} · ${G.players.length}명 · 버튼 <strong>${G.players[G.button].name}</strong>`;
   renderCoach();render();await sleep(400);
   for(let s=0;s<4;s++){
     if(s>0){G.players.forEach(p=>{p.bet=0;p.acted=false;if(!p.folded&&!p.allIn)p.act=''});G.currentBet=0;G.minRaise=BBA;G.numRaises=0;G.street=s;
@@ -567,6 +568,9 @@ function finishHand(){setTimeout(saveSession,0);
     const names=[...won.keys()];
     res.title=names.length>1?`팟 분할 · ${names.map(p=>p.name).join(', ')}`:`${names[0].name} 승 · ${fmt(won.get(names[0]))}`;
     act.forEach(p=>{res.lines.push(`${p.name} ${p.cards.map(c=>rl(cr(c))+SYM[cs(c)]).join(' ')}: ${CAT[sc.get(p)>>20]}${won.has(p)?` → +${fmt(won.get(p))}`:''}`)})}
+  G.players.forEach(p=>{if(p.hero||p.stack>0)return;
+    if(p.rebuyLeft>0){const a=Math.min(REBUY_UNIT,p.rebuyLeft);p.rebuyLeft-=a;p.stack+=a;res.lines.push(`${p.name} 리바인 +${fmt(a)} (남은 한도 ${fmt(p.rebuyLeft)})`)}
+    else{p.eliminated=true;res.lines.push(`${p.name} 탈락 · 리바인 한도를 다 썼습니다`)}});
   const hero=G.players.find(p=>p.hero);res.heroDelta=hero.stack-before;G.result=res;G.acting=-1;
   G.ticker=res.title;render();renderResult()}
 
@@ -624,7 +628,7 @@ function render(){syncNP();
     const show=G.showdown&&!p.folded;
     const cards=p.cards?(show?p.cards.map(c=>cardHTML(c,'sm '+(winCards.has(c)?'win':''))).join(''):(p.folded?'':backHTML('sm')+backHTML('sm'))):'';
     return `<div class="seat ${G.acting===i?'turn':''} ${p.folded?'out':''}"><span class="badge ${i===G.button?'dealer':''}">${pos}${i===G.button&&pos!=='BTN'?'·BTN':''}</span>
-      <div class="nm">${p.name}</div><div class="sty">${p.sty}</div><div class="stk">${fmt(p.stack)}</div>
+      <div class="nm">${p.name}</div><div class="sty">${p.sty}</div><div class="stk">${fmt(p.stack)}</div><div class="sty">리바인 ${p.rebuyLeft>0?fmt(p.rebuyLeft):'없음'}</div>
       <div class="cards">${cards}</div><div class="act">${p.act||'&nbsp;'}</div><div class="betchip">${p.bet?fmt(p.bet):''}</div></div>`}).join('');
   const slots=[];for(let i=0;i<5;i++)slots.push(G.board[i]!==undefined?cardHTML(G.board[i],winCards.has(G.board[i])?'win':''):'<div class="card slot"></div>');
   $('board').innerHTML=slots.join('');
@@ -663,13 +667,16 @@ function renderCoach(){
 function renderResult(){
   const r=G.result,hero=G.players[0];
   const busted=hero.stack<=0;let btns='';
-  if(!busted)btns=`<button class="btn prim" id="nextBtn">다음 핸드<small>Enter</small></button>`;
+  const allOut=G.players.every(p=>p.hero||p.eliminated);
+  if(allOut&&!busted)btns=`<button class="btn prim" id="restartBtn">새 세션 시작<small>Enter</small></button>`;
+  else if(!busted)btns=`<button class="btn prim" id="nextBtn">다음 핸드<small>Enter</small></button>`;
   else if(G.rebuyLeft>0)btns=`<button class="btn prim" id="rebuyBtn">리바인 +${fmt(Math.min(REBUY_UNIT,G.rebuyLeft))}<small>Enter</small></button>`;
   else btns=`<button class="btn prim" id="restartBtn">새 세션 시작<small>Enter</small></button>`;
   const handG=G.handFb.reduce((m,f)=>(m[f.gr.g]++,m),{good:0,ok:0,bad:0});
   const summary=G.handFb.length?`이번 핸드 판단: 좋음 ${handG.good} · 무난 ${handG.ok} · 실수 ${handG.bad}`:'이번 핸드는 판단할 차례가 없었습니다.';
   let over='';
-  if(busted&&G.rebuyLeft<=0){const s=G.stats;over=`<p><strong>세션 종료.</strong> ${G.hand}핸드, 총 ${fmt(G.invested)} 투입. 판단 ${s.dec}번 중 좋음 ${s.good}, 무난 ${s.ok}, 실수 ${s.bad}.</p>`}
+  if(allOut&&!busted){const s=G.stats;over=`<p><strong>테이블 우승!</strong> AI가 모두 탈락했습니다. ${G.hand}핸드, 총 ${fmt(G.invested)} 투입, 최종 스택 ${fmt(hero.stack)}. 판단 ${s.dec}번 중 좋음 ${s.good}, 무난 ${s.ok}, 실수 ${s.bad}.</p>`}
+  else if(busted&&G.rebuyLeft<=0){const s=G.stats;over=`<p><strong>세션 종료.</strong> ${G.hand}핸드, 총 ${fmt(G.invested)} 투입. 판단 ${s.dec}번 중 좋음 ${s.good}, 무난 ${s.ok}, 실수 ${s.bad}.</p>`}
   else if(busted)over=`<p>칩을 모두 잃었습니다. 리바인 한도 안에서 다시 앉을 수 있습니다.</p>`;
   $('resultBox').innerHTML=(`<div class="result"><h2>${r.title}</h2><ul>${r.lines.map(l=>`<li>${l}</li>`).join('')}</ul>
     <div class="ctx" style="font-size:13px">내 손익 이번 핸드 <strong style="color:${r.heroDelta>0?'var(--good)':r.heroDelta<0?'var(--bad)':'var(--ink)'}">${r.heroDelta>0?'+':''}${fmt(r.heroDelta)}</strong> · ${summary}</div>${over}${btns}</div>`);
@@ -760,10 +767,12 @@ function bindReport(f){const fm=$('repForm');if(!fm)return;
 
 /* ===== keep the session across app updates ===== */
 const SAVE_KEY='holdem-live-session-v1';
-function snap(){if(!G.players.length)return null;return{np:G.players.length,players:G.players.map(p=>({stack:p.stack+(G.result?0:(p.total||0))})),hand:G.hand,button:G.button,rebuyLeft:G.rebuyLeft,invested:G.invested,stats:G.stats}}
+function snap(){if(!G.players.length)return null;return{np:G.players.length,players:G.players.map(p=>({name:p.name,rebuyLeft:p.rebuyLeft,eliminated:!!p.eliminated,stack:p.stack+(G.result?0:(p.total||0))})),hand:G.hand,button:G.button,rebuyLeft:G.rebuyLeft,invested:G.invested,stats:G.stats}}
 function saveSession(){const s=snap();if(!s)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(s))}catch(e){}}
-function loadSession(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY));if(s&&s.players&&s.players.length>=2&&s.players.length<=8)return s}catch(e){}return null}
-function resume(s){NP=s.players.length;initPlayers();s.players.forEach((x,i)=>G.players[i].stack=x.stack);G.hand=s.hand;G.button=s.button;G.rebuyLeft=s.rebuyLeft;G.invested=s.invested;G.stats=s.stats;
+function loadSession(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY));if(s&&s.players&&s.players.length>=1&&s.players.length<=8)return s}catch(e){}return null}
+function resume(s){NP=s.np||s.players.length;initPlayers();
+  if(s.players.every(x=>x.name)){G.players=s.players.map((x,i)=>i===0?{name:'나',hero:true,stack:x.stack}:{...(BOTS.find(b=>b.name===x.name)||BOTS[0]),hero:false,stack:x.stack,rebuyLeft:x.rebuyLeft??REBUY_TOTAL,eliminated:!!x.eliminated})}
+  else s.players.forEach((x,i)=>{if(G.players[i])G.players[i].stack=x.stack});G.hand=s.hand;G.button=s.button;G.rebuyLeft=s.rebuyLeft;G.invested=s.invested;G.stats=s.stats;
   G.ticker='이전 세션을 이어서 합니다';G.result=null;
   if(G.players[0].stack<=0){render();G.result={title:'칩이 없습니다',lines:[],heroDelta:0};renderResult();return}
   next()}
@@ -771,10 +780,10 @@ function resume(s){NP=s.players.length;initPlayers();s.players.forEach((x,i)=>G.
 /* ===== table size ===== */
 {const sel=$('npSel');sel.innerHTML=[2,3,4,5,6,7,8].map(n=>`<option value="${n}">${n}명</option>`).join('');
  sel.onchange=()=>{const n=+sel.value;try{localStorage.setItem('holdem-np',n)}catch(e){}
-   if(n===G.players.length){G.pendingNP=0;return}
+   if(n===NP&&!G.players.some(p=>p.eliminated)){G.pendingNP=0;return}
    G.pendingNP=n;
    if(G.result&&!G.running){next()}else{G.ticker=`이번 핸드가 끝나면 <strong>${n}명</strong> 테이블로 새 세션을 시작합니다`;render()}}}
-function syncNP(){const sel=$('npSel');if(sel&&!G.pendingNP)sel.value=String(G.players.length||NP)}
+function syncNP(){const sel=$('npSel');if(sel&&!G.pendingNP)sel.value=String(NP)}
 /* ===== input ===== */
 $('bFold').onclick=()=>heroAct('fold');$('bCall').onclick=()=>heroAct('call');$('bRaise').onclick=()=>heroAct('raise');
 $('hintBtn').onclick=()=>{G.hintShown=true;renderCoach()};
