@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="AppTheme" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/room</item>
+        <item name="android:statusBarColor">@color/room</item>
+        <item name="android:navigationBarColor">@color/room</item>
+    </style>
+    <color name="room">#0A241C</color>
+    <color name="felt">#17523C</color>
+    <color name="brass">#D9B55C</color>
+</resources>

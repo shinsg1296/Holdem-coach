@@ -1,0 +1,855 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>[hidden]{display:none!important}body{margin:0}img{max-width:100%}</style>
+<title>홀덤 실전 코치</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* Layout: one column — session strip, felt table (4 bot seats, board, my seat), action bar, coach slip, session totals. Single dark card-room look by choice. */
+:root{
+  color-scheme: dark;
+  --room:#0a241c; --felt:#11402f; --felt-2:#17523c; --rail:#2a1d12;
+  --ink:#eef3ec; --muted:#9dbcad; --brass:#d9b55c; --brass-ink:#2a1f08;
+  --good:#5fd08a; --ok:#f0c04a; --bad:#ff7466;
+  --card:#fbf8f1; --card-edge:#d9d2c2;
+  --sp:#1d2430; --ht:#c8312b; --dm:#2f62c9; --cl:#1f8a4c;
+  --line:rgba(238,243,236,.13); --panel:#0f2d23;
+  --f-display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
+  --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html,body{background:var(--room);color:var(--ink)}
+body{font-family:var(--f-body);font-size:14px;line-height:1.5;padding-inline:12px;padding-block:12px 40px}
+.wrap{max-width:600px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+h1{font-family:var(--f-display);font-weight:800;font-size:28px;letter-spacing:.02em;margin:0;line-height:1;text-transform:uppercase}
+h1 span{color:var(--brass)}
+.npick{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.npick select{font:inherit;font-size:13px;color:var(--ink);background:#1a3a2f;border:1px solid var(--line);border-radius:8px;padding:3px 6px}
+.meta{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted)}
+.meta b{display:block;font-family:var(--f-mono);font-size:15px;color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+.meta .pos{color:var(--good)}.meta .neg{color:var(--bad)}
+.felt{background:radial-gradient(ellipse at 50% 45%,var(--felt-2),var(--felt) 72%);border:6px solid var(--rail);border-radius:24px;padding:12px 10px 14px;display:flex;flex-direction:column;gap:12px;box-shadow:inset 0 0 40px rgba(0,0,0,.35)}
+.bots{display:grid;grid-template-columns:repeat(var(--cols,4),minmax(0,1fr));gap:12px 6px}
+.seat{background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:12px;padding:6px 6px 7px;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;position:relative;transition:border-color .2s}
+.seat.turn{border-color:var(--brass);box-shadow:0 0 0 1px var(--brass)}
+.seat.out{opacity:.45}
+.seat .nm{font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.seat .sty{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;margin-top:-3px}
+.seat .stk{font-family:var(--f-mono);font-size:12px;font-variant-numeric:tabular-nums}
+.badge{position:absolute;top:-8px;right:-4px;font-family:var(--f-mono);font-size:10px;font-weight:600;padding:1px 6px;border-radius:999px;background:var(--ink);color:var(--room)}
+.badge.dealer{background:var(--brass);color:var(--brass-ink)}
+.act{font-size:11px;color:var(--brass);min-height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.betchip{font-family:var(--f-mono);font-size:11px;background:rgba(0,0,0,.35);border-radius:999px;padding:0 7px;min-height:17px;font-variant-numeric:tabular-nums}
+.cards{display:flex;gap:3px;justify-content:center}
+.card{--w:44px;width:var(--w);height:calc(var(--w)*1.4);background:var(--card);border:1px solid var(--card-edge);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;box-shadow:0 2px 0 rgba(0,0,0,.25);font-family:var(--f-display);font-weight:800;flex:none}
+.card .r{font-size:calc(var(--w)*.5)}
+.card .s{font-size:calc(var(--w)*.42);font-family:var(--f-body)}
+.card.sm{--w:24px;border-radius:4px}
+.card.big{--w:62px}
+.card.back{background:repeating-linear-gradient(45deg,#7a2a22 0 4px,#8f3429 4px 8px);border-color:#5a1c16}
+.card.slot{background:rgba(0,0,0,.18);border:1px dashed var(--line);box-shadow:none}
+.card.s-0{color:var(--sp)}.card.s-1{color:var(--ht)}.card.s-2{color:var(--dm)}.card.s-3{color:var(--cl)}
+.card.win{outline:2px solid var(--brass);outline-offset:1px}
+.center{display:flex;flex-direction:column;align-items:center;gap:8px}
+.board{display:flex;gap:5px;justify-content:center}
+.potline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
+.chip{font-family:var(--f-mono);font-size:13px;background:rgba(0,0,0,.3);border:1px solid var(--line);padding:4px 11px;border-radius:999px;font-variant-numeric:tabular-nums}
+.chip em{font-style:normal;color:var(--brass);font-weight:600}
+.ticker{font-size:13px;color:var(--muted);text-align:center;min-height:20px;text-wrap:balance}
+.ticker strong{color:var(--ink)}
+.hero{display:flex;align-items:center;justify-content:center;gap:14px;background:rgba(0,0,0,.22);border:1px solid var(--line);border-radius:14px;padding:10px;position:relative}
+.hero.turn{border-color:var(--brass);box-shadow:0 0 0 1px var(--brass)}
+.hero .info{display:flex;flex-direction:column;gap:2px;min-width:0}
+.hero .nm{font-weight:700}
+.hero .stk{font-family:var(--f-mono);font-size:16px;font-variant-numeric:tabular-nums}
+.hero .made{font-size:12px;color:var(--brass)}
+.controls{display:flex;flex-direction:column;gap:8px}
+.sizes{display:flex;gap:6px;flex-wrap:wrap}
+.size{appearance:none;font:inherit;font-size:12px;font-weight:600;padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:#1a3a2f;color:var(--ink);cursor:pointer}
+.size[aria-pressed="true"]{background:var(--brass);color:var(--brass-ink);border-color:var(--brass)}
+.slider{display:flex;align-items:center;gap:10px}
+.slider input{flex:1;min-width:0;accent-color:var(--brass)}
+.slider output{font-family:var(--f-mono);font-size:13px;min-width:92px;text-align:right;font-variant-numeric:tabular-nums}
+.acts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.btn{appearance:none;font:inherit;font-weight:700;font-size:16px;padding:14px 6px;border-radius:12px;cursor:pointer;color:var(--ink);background:#22362e;border:1px solid var(--line)}
+.btn small{display:block;font-weight:500;font-size:11px;color:var(--muted);margin-top:1px;font-family:var(--f-mono)}
+.btn.prim{background:var(--brass);color:var(--brass-ink);border-color:var(--brass)}
+.btn.prim small{color:#5a4515}
+.btn:disabled{opacity:.3;cursor:default}
+.btn:focus-visible,.size:focus-visible,.link:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.row2{display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap}
+.link{background:none;border:0;color:var(--muted);font:inherit;font-size:12px;text-decoration:underline;cursor:pointer;padding:2px}
+.wait{font-size:12px;color:var(--muted)}
+.coach{display:flex;flex-direction:column;gap:8px}
+.fb{border-radius:14px;padding:14px;background:var(--panel);border:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.fb.good{border-left:6px solid var(--good)}.fb.ok{border-left:6px solid var(--ok)}.fb.bad{border-left:6px solid var(--bad)}.fb.hint{border-left:6px solid var(--muted)}
+.fb .top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.verdict{font-family:var(--f-display);font-weight:800;font-size:24px;letter-spacing:.03em;line-height:1}
+.fb.good .verdict{color:var(--good)}.fb.ok .verdict{color:var(--ok)}.fb.bad .verdict{color:var(--bad)}.fb.hint .verdict{color:var(--muted)}
+.fb .ctx{font-size:12px;color:var(--muted)}
+.fb p{margin:0;max-width:65ch}
+.math{font-family:var(--f-mono);font-size:12px;background:rgba(0,0,0,.25);border-radius:10px;padding:8px 10px;display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-variant-numeric:tabular-nums;margin:0}
+.math dt{color:var(--muted)}.math dd{margin:0;text-align:right}.math .hl{color:var(--brass);font-weight:600}
+.bar{position:relative;height:10px;border-radius:5px;background:rgba(0,0,0,.35);overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;background:var(--good);border-radius:5px}
+.bar b{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink)}
+.note{font-size:12px;color:var(--ok)}
+.hist{display:flex;flex-direction:column;gap:4px}
+.hist div{font-size:12px;display:flex;gap:8px;align-items:baseline;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;transform:translateY(1px)}
+.dot.good{background:var(--good)}.dot.ok{background:var(--ok)}.dot.bad{background:var(--bad)}
+.result{border-radius:14px;padding:14px;background:var(--panel);border:1px solid var(--brass);display:flex;flex-direction:column;gap:10px}
+.result h2{font-family:var(--f-display);font-size:22px;margin:0;letter-spacing:.02em;line-height:1.1}
+.result ul{margin:0;padding-left:18px;font-size:13px}
+.totals{font-size:12px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap}
+.totals b{color:var(--ink);font-family:var(--f-mono)}
+footer{font-size:11px;color:var(--muted)}
+.setrow{display:flex;justify-content:flex-end;margin-top:-6px}
+.settings{border-radius:14px;padding:14px;background:var(--panel);border:1px solid var(--line);display:flex;flex-direction:column;gap:16px}
+.sgroup{display:flex;flex-direction:column;gap:6px}
+.sgroup label,.shead{font-size:13px;font-weight:700;display:flex;flex-direction:column;gap:2px}
+.sgroup label .ctx{font-weight:400}
+.settings select{font:inherit;font-size:14px;color:var(--ink);background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:10px;padding:9px 10px}
+.repbtns{display:flex;gap:6px;flex-wrap:wrap}
+.replist{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+.replist div{border-top:1px solid var(--line);padding-top:4px}
+.chat{display:flex;flex-direction:column;gap:8px;border-radius:14px;padding:12px;background:var(--panel);border:1px solid var(--line)}
+.chathead{font-size:12px;letter-spacing:.08em;color:var(--muted)}
+.quick{display:flex;gap:6px;flex-wrap:wrap}
+.qbtn{appearance:none;font:inherit;font-size:13px;padding:7px 11px;border-radius:999px;border:1px solid var(--brass);background:transparent;color:var(--brass);cursor:pointer;text-align:left}
+.msgs{display:flex;flex-direction:column;gap:8px;max-height:420px;overflow-y:auto}
+.msgs:empty{display:none}
+.msg{display:flex;flex-direction:column;gap:2px;max-width:92%;min-width:0}
+.msg.user{align-self:flex-end}
+.msg.user .bub{background:var(--brass);color:var(--brass-ink);border-radius:14px 14px 4px 14px}
+.msg.assistant .bub{background:rgba(0,0,0,.28);border-radius:14px 14px 14px 4px}
+.bub{padding:9px 12px;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}
+.who{font-size:11px;color:var(--muted)}
+.err{font-size:12px;color:var(--bad)}
+.ask{display:flex;gap:6px}
+.ask input{flex:1;min-width:0;font:inherit;font-size:15px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.3);color:var(--ink)}
+.ask input:focus-visible,.qbtn:focus-visible,.histbtn:focus-visible{outline:2px solid var(--brass);outline-offset:1px}
+.sendbtn{padding:10px 14px;font-size:14px}
+.chatoff{font-size:12px;color:var(--muted)}
+.histbtn{appearance:none;font:inherit;font-size:12px;display:flex;gap:8px;align-items:baseline;color:var(--muted);background:none;border:0;padding:4px 0;text-align:left;cursor:pointer}
+.histbtn:hover{color:var(--ink)}
+.rep summary{font-size:12px;color:var(--muted);cursor:pointer;list-style:none;text-decoration:underline}
+.rep summary::-webkit-details-marker{display:none}
+.rep form{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.rep textarea{font:inherit;font-size:14px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.3);color:var(--ink);resize:vertical;min-width:0}
+.repdone{font-size:12px;color:var(--good)}
+@media (max-width:420px){.card{--w:40px}.card.big{--w:54px}.card.sm{--w:21px}.seat .nm{font-size:12px}.btn{font-size:15px}}
+@media (prefers-reduced-motion:no-preference){.fb,.result{animation:pop .18s ease-out}@keyframes pop{from{transform:translateY(4px);opacity:.6}to{transform:none;opacity:1}}}
+</style>
+
+</head><body>
+<div class="wrap">
+  <header>
+    <h1>홀덤 <span>실전</span> 코치</h1>
+    <label class="npick" for="npSel">인원 <select id="npSel"></select> · 블라인드 500/1,000</label>
+  </header>
+  <div class="setrow"><button class="link" id="setBtn" aria-expanded="false" aria-controls="settings">설정 · 신고 목록</button></div>
+  <section class="settings" id="settings" hidden>
+    <div class="sgroup">
+      <label for="keyIn">Anthropic API 키 <span class="ctx">해설에 대해 질문할 때만 쓰입니다. 이 폰에만 저장돼요.</span></label>
+      <div class="ask"><input id="keyIn" type="password" autocomplete="off" placeholder="sk-ant-..."><button class="btn sendbtn" id="keySave" type="button">저장</button></div>
+      <label for="modelSel">모델</label>
+      <select id="modelSel"></select>
+      <div class="ctx" id="keyMsg"></div>
+    </div>
+    <div class="sgroup">
+      <div class="shead">신고 목록 <span id="repCount"></span></div>
+      <div class="repbtns"><button class="btn sendbtn" id="repShare" type="button">공유</button><button class="btn sendbtn" id="repCopy" type="button">복사</button><button class="btn sendbtn" id="repClear" type="button">비우기</button></div>
+      <div class="ctx" id="repMsg">공유하거나 복사한 내용을 Claude 대화창에 붙여넣고 "신고한 해설 확인해줘"라고 하면 엔진을 고칩니다.</div>
+      <div id="repList" class="replist"></div>
+    </div>
+  </section>
+  <div class="meta" id="meta"></div>
+
+  <section class="felt">
+    <div class="bots" id="bots"></div>
+    <div class="center">
+      <div class="board" id="board"></div>
+      <div class="potline" id="potline"></div>
+      <div class="ticker" id="ticker"></div>
+    </div>
+    <div class="hero" id="hero"></div>
+  </section>
+
+  <section class="controls" id="controls">
+    <div class="sizes" id="sizes"></div>
+    <div class="slider"><input type="range" id="amt" aria-label="레이즈 금액"><output id="amtOut"></output></div>
+    <div class="acts">
+      <button class="btn" id="bFold">폴드<small>F</small></button>
+      <button class="btn" id="bCall">체크<small>C</small></button>
+      <button class="btn prim" id="bRaise">레이즈<small>R</small></button>
+    </div>
+    <div class="row2"><span class="wait" id="waitTxt"></span><button class="link" id="hintBtn">코치 힌트 보기 (H)</button></div>
+  </section>
+
+  <div id="resultBox"></div>
+  <section class="coach" id="coach"></section>
+  <div class="totals" id="totals"></div>
+  <footer>승률은 상대 카드를 모르니, 상대가 지금까지 한 액션(오픈·3벳·콜·벳)과 보드를 보고 "이런 패들을 들고 있겠다"를 추정한 뒤 그 패들과 수천 번 가상으로 붙여 본 결과입니다. 블러프·세미블러프는 상대가 폴드할 확률까지 넣은 기대값으로 판단하고, 상대가 한 명이면 턴·리버 베팅까지 시뮬레이션합니다. 상대가 여러 명이면 남은 베팅 없이 쇼다운까지 간다고 단순화합니다. 상대 성향은 코치 계산에 쓰지 않습니다. 해설 아래 입력창으로 그 결정에 대해 Claude에게 바로 질문하고 토론할 수 있습니다(설정에 넣은 API 키로 요금이 청구됩니다). 리바인은 1회 30,000칩씩, 총 150,000까지(5번) 가능합니다. AI가 파산하면 30,000으로 다시 채워집니다. 인원을 바꾸면 새 세션이 시작됩니다.</footer>
+</div>
+
+<script>
+/* ===== constants ===== */
+const SBA=500,BBA=1000,BUYIN=30000,REBUY_TOTAL=150000,REBUY_UNIT=30000,DELAY=650;
+const RANKS='23456789TJQKA';
+const SYM=['♠','♥','♦','♣'];
+const CAT=['하이카드','원페어','투페어','트리플','스트레이트','플러시','풀하우스','포카드','스트레이트 플러시'];
+const rl=r=>RANKS[r]==='T'?'10':RANKS[r];
+const fmt=n=>Math.round(n).toLocaleString('ko-KR');
+const bb=n=>{const v=n/BBA;return (Math.round(v*10)/10)+'BB'};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const $=id=>document.getElementById(id);
+const cr=c=>c>>2, cs=c=>c&3;
+
+/* preflop strength order (blend of heads-up and 3-way equity) */
+const ORDER='AA KK QQ JJ TT 99 AKs AQs 88 AJs AQo AKo KQs ATs 77 KJs AJo A9s KTs A8s KQo ATo QJs K9s KTo 66 KJo A5s JTs A9o A7s QTs A4s A6s A8o QJo Q9s 55 K8s A3s K7s A7o QTo JTo A2s K9o J9s A5o A6o K6s Q8s Q9o J8s T9s K5s A4o K4s J9o T8s 44 K8o Q7s A2o A3o K6o K3s T9o 98s Q5s Q6s J7s K2s K7o K5o Q8o T7s Q4s Q7o 33 97s J8o Q3s 87s J5s T8o K4o Q2s J6s Q6o 98o T5s Q4o J7o T6s 86s 96s Q5o K3o J4s J3s 76s 22 K2o J2s 97o T4s 75s T7o 87o J6o 95s 85s 65s T6o T2s J5o 54s Q3o 76o Q2o T3s 93s 64s T5o 74s J4o J3o 94s 84s 96o 86o 75o 53s 92s 65o J2o T4o 95o 85o 43s T3o 63s 73s 83s 52s 82s T2o 74o 54o 42s 72s 93o 94o 84o 64o 62s 92o 32s 73o 63o 43o 83o 53o 82o 62o 52o 72o 42o 32o'.split(' ');
+const combosOf=k=>k.length===2?6:(k[2]==='s'?4:12);
+const PCT={};{let c=0;ORDER.forEach(k=>{c+=combosOf(k);PCT[k]=c/1326})}
+function keyOf(a,b){const x=Math.max(cr(a),cr(b)),y=Math.min(cr(a),cr(b));if(x===y)return RANKS[x]+RANKS[y];return RANKS[x]+RANKS[y]+(cs(a)===cs(b)?'s':'o')}
+const handPct=h=>PCT[keyOf(h[0],h[1])];
+const ALL=[];for(let a=0;a<52;a++)for(let b=a+1;b<52;b++)ALL.push([a,b,PCT[keyOf(a,b)]]);
+const RC={};const combosFor=p=>{const k=p.toFixed(3);return RC[k]||(RC[k]=ALL.filter(c=>c[2]<=p+1e-9))};
+
+/* open-raise ranges (5-handed: UTG plays like a 6-max HJ) */
+const RFI_TXT={UTG:'44+ A2s+ K9s+ Q9s+ J9s+ T9s 98s 87s ATo+ KJo+ QJo',CO:'22+ A2s+ K7s+ Q8s+ J8s+ T8s+ 97s+ 87s 76s 65s A8o+ KTo+ QTo+ JTo',
+  BTN:'22+ A2s+ K2s+ Q4s+ J6s+ T6s+ 96s+ 85s+ 75s+ 64s+ 54s A2o+ K8o+ Q9o+ J9o+ T9o 98o',SB:'22+ A2s+ K4s+ Q6s+ J7s+ T7s+ 97s+ 86s+ 75s+ 65s 54s A4o+ K9o+ Q9o+ J9o+ T9o'};
+function parseRange(str){const set=new Set();const rk=ch=>RANKS.indexOf(ch);
+  for(const t of str.split(/\s+/)){const plus=t.endsWith('+');const b=plus?t.slice(0,-1):t;const a=rk(b[0]),c=rk(b[1]);
+    if(b.length===2){if(plus){for(let r=a;r<=12;r++)set.add(RANKS[r]+RANKS[r])}else set.add(b)}
+    else{if(plus){for(let r=c;r<a;r++)set.add(RANKS[a]+RANKS[r]+b[2])}else set.add(b)}}return set}
+const RFI={},RFIPCT={};for(const p in RFI_TXT){RFI[p]=parseRange(RFI_TXT[p]);let n=0;RFI[p].forEach(k=>n+=combosOf(k));RFIPCT[p]=n/1326}
+const RFIB={},RFIBP={};
+{const byPct=pc=>{const set=new Set();let c=0;for(const k of ORDER){if(c/1326>=pc)break;set.add(k);c+=combosOf(k)}return set};
+ const put=(b,set)=>{RFIB[b]=set;let n=0;set.forEach(k=>n+=combosOf(k));RFIBP[b]=n/1326};
+ put(1,RFI.SB);put(2,RFI.BTN);put(3,RFI.CO);put(4,RFI.UTG);put(5,byPct(.15));put(6,byPct(.12));put(7,byPct(.10))}
+
+/* ===== fast evaluator (5–7 cards) ===== */
+function strHi(b){for(let h=12;h>=4;h--){const m=0x1f<<(h-4);if((b&m)===m)return h}if((b&0x100f)===0x100f)return 3;return -1}
+function ev(c){const rc=new Array(13).fill(0),sc=[0,0,0,0],sb=[0,0,0,0];let rb=0;
+  for(const x of c){const r=x>>2,s=x&3;rc[r]++;sc[s]++;sb[s]|=1<<r;rb|=1<<r}
+  for(let s=0;s<4;s++)if(sc[s]>=5){const h=strHi(sb[s]);if(h>=0)return 8<<20|h<<16;const k=[];for(let r=12;r>=0&&k.length<5;r--)if(sb[s]>>r&1)k.push(r);return 5<<20|k[0]<<16|k[1]<<12|k[2]<<8|k[3]<<4|k[4]}
+  let q=-1;const t=[],p=[],s1=[];for(let r=12;r>=0;r--){if(rc[r]===4)q=r;else if(rc[r]===3)t.push(r);else if(rc[r]===2)p.push(r);else if(rc[r]===1)s1.push(r)}
+  if(q>=0){let k=0;for(let r=12;r>=0;r--)if(r!==q&&rc[r]){k=r;break}return 7<<20|q<<16|k<<12}
+  if(t.length&&(t.length>1||p.length)){const pp=t.length>1?Math.max(t[1],p[0]??-1):p[0];return 6<<20|t[0]<<16|pp<<12}
+  const h=strHi(rb);if(h>=0)return 4<<20|h<<16;
+  if(t.length){const ks=[...p,...s1].sort((a,b)=>b-a);return 3<<20|t[0]<<16|(ks[0]??0)<<12|(ks[1]??0)<<8}
+  if(p.length>=2){const ks=[...p.slice(2),...s1].sort((a,b)=>b-a);return 2<<20|p[0]<<16|p[1]<<12|(ks[0]??0)<<8}
+  if(p.length){return 1<<20|p[0]<<16|(s1[0]??0)<<12|(s1[1]??0)<<8|(s1[2]??0)<<4}
+  return s1[0]<<16|s1[1]<<12|s1[2]<<8|s1[3]<<4|s1[4]}
+function best5(cards){let b=-1,bc=null;const n=cards.length;
+  for(let a=0;a<n;a++)for(let c=a+1;c<n;c++)for(let d=c+1;d<n;d++)for(let e=d+1;e<n;e++)for(let f=e+1;f<n;f++){const h=[cards[a],cards[c],cards[d],cards[e],cards[f]];const s=ev(h);if(s>b){b=s;bc=h}}return bc}
+function describe(hole,board){
+  const s=ev([...hole,...board]),cat=s>>20,k1=s>>16&15,k2=s>>12&15;
+  let t=[`하이카드 ${rl(k1)}`,`원페어 (${rl(k1)})`,`투페어 (${rl(k1)}·${rl(k2)})`,`트리플 (${rl(k1)})`,`스트레이트 (${rl(k1)} 하이)`,`플러시 (${rl(k1)} 하이)`,`풀하우스 (${rl(k1)}·${rl(k2)})`,`포카드 (${rl(k1)})`,'스트레이트 플러시'][cat];
+  if(board.length===5&&ev(board)===s)t+=' · 보드 플레이';
+  const draws=[];
+  if(board.length<5&&cat<4){
+    const sc=[0,0,0,0];[...hole,...board].forEach(c=>sc[cs(c)]++);
+    for(let su=0;su<4;su++)if(sc[su]===4&&hole.some(c=>cs(c)===su))draws.push('플러시 드로우');
+    let mask=0;[...hole,...board].forEach(c=>mask|=1<<cr(c));
+    if(strHi(mask)<0){let n=0;for(let r=0;r<13;r++)if(!(mask>>r&1)&&strHi(mask|1<<r)>=0){let bm=0;board.forEach(c=>bm|=1<<cr(c));if(strHi(bm|1<<r)<0)n++}
+      if(n>=2)draws.push('양방 스트레이트 드로우');else if(n===1)draws.push('거트샷')}
+  }
+  return{text:t,cat,draws}}
+
+/* ===== equity (Monte Carlo vs estimated ranges) ===== */
+function equity(hero,board,ranges,N){
+  const dead=new Set([...hero,...board]);let w=0;
+  for(let it=0;it<N;it++){
+    const used=new Set(dead);const oh=[];
+    for(const R of ranges){const list=combosFor(R.pct);let h=null;
+      for(let t=0;t<50;t++){const c=list[Math.random()*list.length|0];if(used.has(c[0])||used.has(c[1]))continue;
+        if(R.post&&board.length>=3){if(Math.random()>KEEP[R.mode][tierOf(c,board)])continue}
+        h=[c[0],c[1]];break}
+      if(!h){do{h=[Math.random()*52|0,Math.random()*52|0]}while(h[0]===h[1]||used.has(h[0])||used.has(h[1]))}
+      used.add(h[0]);used.add(h[1]);oh.push(h)}
+    const b=board.slice();while(b.length<5){const x=Math.random()*52|0;if(!used.has(x)){used.add(x);b.push(x)}}
+    const hs=ev([...hero,...b]);let m=-1,ties=0;
+    for(const h of oh){const s=ev([h[0],h[1],...b]);if(s>m){m=s;ties=1}else if(s===m)ties++}
+    if(hs>m)w+=1;else if(hs===m)w+=1/(ties+1)}
+  return w/N}
+
+/* ===== players ===== */
+let NP=(()=>{try{const v=+localStorage.getItem('holdem-np');return v>=2&&v<=8?v:5}catch(e){return 5}})();
+const BOTS=[
+  {name:'바위',sty:'타이트·패시브',loose:.75,aggr:.6,station:0},
+  {name:'상어',sty:'타이트·공격',loose:.95,aggr:1.3,station:0},
+  {name:'불도저',sty:'루즈·공격',loose:1.5,aggr:1.5,station:0},
+  {name:'낚시꾼',sty:'루즈·콜링',loose:1.45,aggr:.5,station:1},
+  {name:'여우',sty:'균형형',loose:1.1,aggr:1.1,station:0},
+  {name:'거북',sty:'초타이트',loose:.6,aggr:.5,station:0},
+  {name:'도박꾼',sty:'초루즈·콜링',loose:1.8,aggr:1.2,station:1}];
+const G={players:[],button:0,board:[],deck:[],street:0,currentBet:0,minRaise:BBA,numRaises:0,
+  hand:0,rebuyLeft:REBUY_TOTAL,invested:BUYIN,ticker:'',acting:-1,showdown:false,heroWait:null,advice:null,
+  handFb:[],stats:{hands:0,dec:0,good:0,ok:0,bad:0},over:false,winners:new Set(),reloads:0};
+function initPlayers(){G.players=[{name:'나',hero:true,stack:BUYIN},...BOTS.slice(0,NP-1).map(b=>({...b,hero:false,stack:BUYIN}))];G.button=Math.floor(Math.random()*NP)}
+const NPN=()=>G.players.length;
+const EARLY={1:['UTG'],2:['UTG','CO'],3:['UTG','HJ','CO'],4:['UTG','MP','HJ','CO'],5:['UTG','UTG+1','MP','HJ','CO']};
+const sbIdx=()=>NPN()===2?G.button:(G.button+1)%NPN();
+const bbIdx=()=>NPN()===2?(G.button+1)%2:(G.button+2)%NPN();
+const posName=i=>{const N=NPN(),k=(i-G.button+N)%N;if(N===2)return k===0?'SB':'BB';if(k<3)return['BTN','SB','BB'][k];return EARLY[N-3][k-3]};
+/* players still to act behind seat i in an unopened pot (1 = SB, 2 = BTN, 3 = CO …) */
+const behindOf=i=>(bbIdx()-i+NPN())%NPN();
+const activeP=()=>G.players.filter(p=>!p.folded);
+const potTotal=()=>G.players.reduce((s,p)=>s+p.total,0);
+function put(p,amt){const a=Math.min(amt,p.stack);p.stack-=a;p.bet+=a;p.total+=a;if(p.stack===0)p.allIn=true;return a}
+
+/* ===== opponent range model (used by coach and bots) ===== */
+function oppModel(o){const pos=o.prePos||posName(G.players.indexOf(o));let pct,desc;
+  if(o.preLevel>=3){pct=.04;desc='4벳 이상 · 상위 4%'}
+  else if(o.preLevel===2){pct=.09;desc='3벳 · 상위 9%'}
+  else if(o.preLevel===1){if(o.preShove){pct=.15;desc='오픈 올인 · 상위 15%'}else{pct=RFIBP[o.preBehind]||.25;desc=`${pos} 오픈 · 상위 ${Math.round(pct*100)}%`}}
+  else if(o.calledLevel>=2){pct=.11;desc='3벳에 콜 · 상위 11%'}
+  else if(o.calledLevel===1){pct=.25;desc='레이즈에 콜 · 상위 25%'}
+  else if(o.limped){pct=.5;desc='림프 · 상위 50%'}
+  else if(G.street===0&&!o.acted&&!['SB','BB'].includes(posName(G.players.indexOf(o)))){pct=1;desc='아직 액션 전 · 전체 범위'}
+  else{pct=1;desc='블라인드 · 전체 범위'}
+  const mode=o.aggPost?'agg':o.postCalled?'call':'check';
+  if(G.street>0)desc+=mode==='agg'?' → 보드에서 벳/레이즈(강한 패·드로우·블러프 쪽으로 좁힘)':mode==='call'?' → 보드에서 콜(중간 강도·드로우 쪽으로 좁힘)':' → 보드에서 체크(아주 강한 패 비중 낮춤)';
+  return{pct,desc,mode,post:G.street>0,name:o.name}}
+
+/* ===== coach (EV-based: board-aware ranges + fold equity + turn/river play-out) ===== */
+const ALABEL={fold:'폴드',check:'체크',call:'콜',raise:'레이즈',bet:'벳'};
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function hasDraw(h,board){
+  const all=[h[0],h[1],...board];const sc=[0,0,0,0];all.forEach(c=>sc[cs(c)]++);
+  for(let su=0;su<4;su++)if(sc[su]===4&&(cs(h[0])===su||cs(h[1])===su))return true;
+  let mask=0,bm=0;all.forEach(c=>mask|=1<<cr(c));board.forEach(c=>bm|=1<<cr(c));
+  if(strHi(mask)>=0)return false;let n=0;for(let r=0;r<13;r++)if(!(mask>>r&1)&&strHi(mask|1<<r)>=0&&strHi(bm|1<<r)<0)n++;
+  return n>=2}
+/* how a hand connects with THIS board: nuts / strong / top / pair / draw / air */
+function tierOf(h,board){
+  const s=ev([h[0],h[1],...board]),cat=s>>20;
+  if(board.length===5&&ev(board)>=s)return'air';
+  const hr=[cr(h[0]),cr(h[1])],k1=s>>16&15,k2=s>>12&15;
+  if(cat>=3){if(cat===3&&!hr.includes(k1))return board.length<5&&hasDraw(h,board)?'draw':'air';return'nuts'}
+  if(cat===2){if(hr.includes(k1)||hr.includes(k2))return'strong';return board.length<5&&hasDraw(h,board)?'draw':'air'}
+  if(cat===1){if(!hr.includes(k1))return board.length<5&&hasDraw(h,board)?'draw':'air';return k1>=Math.max(...board.map(cr))?'top':'pair'}
+  return board.length<5&&hasDraw(h,board)?'draw':'air'}
+const TIER_KO={nuts:'트리플 이상',strong:'투페어',top:'탑페어 이상',pair:'중간·약한 페어',draw:'강한 드로우',air:'노페어'};
+/* how likely a hand in each tier is still in the range after this action */
+const KEEP={agg:{nuts:1,strong:1,top:.9,pair:.4,draw:.75,air:.28},call:{nuts:.5,strong:.85,top:1,pair:.9,draw:.9,air:.2},check:{nuts:.35,strong:.6,top:.8,pair:1,draw:1,air:1}};
+function contProb(tier,s,street){
+  switch(tier){case'nuts':return .97;case'strong':return s>2?.8:.93;
+    case'top':return s<=1?.88-.25*s:clamp(.63-.3*(s-1),.1,.63);case'pair':return clamp(.5-.3*s,.03,.5);
+    case'draw':return street<3?clamp(.68-.3*s,.08,.68):.02;default:return .04}}
+function buildSamples(p,N){
+  const opps=activeP().filter(o=>o!==p),ranges=opps.map(oppModel),board=G.board,dead=new Set([...p.cards,...board]);const S=[];
+  for(let it=0;it<N;it++){const used=new Set(dead),oh=[],tiers=[];
+    for(const R of ranges){const list=combosFor(R.pct);let h=null,tier=null;
+      for(let t=0;t<60;t++){const c=list[Math.random()*list.length|0];if(used.has(c[0])||used.has(c[1]))continue;
+        if(board.length>=3){tier=tierOf(c,board);if(Math.random()>KEEP[R.mode][tier])continue}
+        h=[c[0],c[1]];break}
+      if(!h){do{h=[Math.random()*52|0,Math.random()*52|0]}while(h[0]===h[1]||used.has(h[0])||used.has(h[1]));tier=board.length>=3?tierOf(h,board):null}
+      used.add(h[0]);used.add(h[1]);oh.push(h);tiers.push(tier)}
+    const b=board.slice();while(b.length<5){const x=Math.random()*52|0;if(!used.has(x)){used.add(x);b.push(x)}}
+    S.push({b,oh,hs:ev([...p.cards,...b]),os:oh.map(h=>ev([h[0],h[1],...b])),feat:oh.map((h,i)=>({hp:PCT[keyOf(h[0],h[1])],tier:tiers[i]}))})}
+  return{opps,ranges,S}}
+function shareAmong(it,mask){let m=-1,ties=0;for(let i=0;i<it.os.length;i++)if(mask>>i&1){const s=it.os[i];if(s>m){m=s;ties=1}else if(s===m)ties++}
+  if(it.hs>m)return 1;if(it.hs===m)return 1/(ties+1);return 0}
+function callProb(o,R,f,facing,pot,a){
+  if(facing<=0)return 1;
+  const need=facing/(pot+a+facing);
+  if(G.street===0){const k=clamp(1.6*(0.5-need)+0.15,0.12,1);return f.hp<=R.pct*k?0.95:0.03}
+  return contProb(f.tier,facing/Math.max(1,pot+a-facing),G.street)}
+/* heads-up play-out of the remaining streets with simple policies for both players.
+   returns chips hero collects minus chips hero adds from here on. */
+const BETP={nuts:.9,strong:.9,top:.75,pair:.3,draw:.45,air:.22};
+function playOut(it,heroCards,pot,hl,ol,street,heroFirst,oppPendingNow){
+  let put=0;const oh=it.oh[0];
+  const boardAt=k=>it.b.slice(0,k===1?3:k===2?4:5);
+  function bettingStreet(k,first,second){
+    const bd=boardAt(k);const T={h:tierOf(heroCards,bd),o:tierOf(oh,bd)};
+    const order=first===null?[second]:[first,second];
+    for(let j=0;j<order.length;j++){const who=order[j];const eff=Math.min(hl,ol);if(eff<=0)return null;
+      if(Math.random()<BETP[T[who]]){const bet=Math.min(eff,Math.max(BBA,Math.round(pot*.66/SBA)*SBA));
+        const other=who==='h'?'o':'h';
+        if(Math.random()<contProb(T[other],bet/pot,k)){pot+=2*bet;hl-=bet;ol-=bet;if(who==='h'||other==='h')put+=bet;return null}
+        return who}}
+    return null}
+  for(let k=street;k<=3;k++){
+    let winner;
+    if(k===street&&oppPendingNow)winner=bettingStreet(k,null,'o');
+    else if(k>street||!oppPendingNow)winner=bettingStreet(k,heroFirst?'h':'o',heroFirst?'o':'h');
+    if(winner==='h')return pot-put;if(winner==='o')return -put;
+    if(hl<=0||ol<=0)break}
+  return shareAmong(it,1)*pot-put}
+const postRank=i=>((i-G.button+NPN())%NPN())||NPN();
+function evRaise(p,X,T){
+  const pot=potTotal(),maxTo=p.bet+p.stack;T=Math.min(T,maxTo);const a=T-p.bet;const n=X.opps.length;
+  let tot=0,foldAll=0,eqCalled=0,wCalled=0;
+  const hu=n===1,o0=X.opps[0],heroFirst=hu&&postRank(G.players.indexOf(p))<postRank(G.players.indexOf(o0));
+  const callAmt=X.opps.map(o=>Math.min(T-o.bet,o.stack));
+  const Q=X.S.map(it=>X.opps.map((o,i)=>callProb(o,X.ranges[i],it.feat[i],callAmt[i],pot,Math.min(a,o.bet+callAmt[i]-p.bet))));
+  /* minimum defense: a sensible opponent does not fold too much to big bets, so top up calls toward ~75% of MDF */
+  if(G.street>0)X.opps.forEach((o,i)=>{if(callAmt[i]<=0)return;const mean=Q.reduce((s,q)=>s+q[i],0)/Q.length;
+    const target=.75*pot/(pot+callAmt[i])/Math.max(1,n);if(mean>=target)return;
+    /* extra calls come from bluff-catchers (pairs, draws), never from air */
+    const bc=X.S.map((it,si)=>['top','pair','draw'].includes(it.feat[i].tier)?1-Q[si][i]:0);const room=bc.reduce((a,b)=>a+b,0)/Q.length;
+    if(room<=0)return;const k=Math.min(1,(target-mean)/room);Q.forEach((q,si)=>q[i]+=bc[si]*k)});
+  for(let si=0;si<X.S.length;si++){const it=X.S[si];const q=Q[si];
+    for(let mask=0;mask<(1<<n);mask++){let pr=1;for(let i=0;i<n;i++)pr*=(mask>>i&1)?q[i]:1-q[i];if(pr<1e-6)continue;
+      if(mask===0){tot+=pr*pot;foldAll+=pr;continue}
+      let risk=0;for(let i=0;i<n;i++)if(mask>>i&1)risk=Math.max(risk,X.opps[i].bet+callAmt[i]-p.bet);risk=Math.min(a,risk);
+      let c=0;for(let i=0;i<n;i++)if(mask>>i&1)c+=Math.min(callAmt[i],p.bet+risk-X.opps[i].bet);
+      const sh=shareAmong(it,mask);
+      const hl=p.stack-risk,ol=hu?o0.stack-c:0;
+      const val=(hu&&G.street<3&&hl>0&&ol>0)?playOut(it,p.cards,pot+risk+c,hl,ol,G.street+1,heroFirst,false)-risk:sh*(pot+risk+c)-risk;
+      tot+=pr*val;eqCalled+=pr*sh;wCalled+=pr}}
+  const N=X.S.length;return{ev:tot/N,fold:foldAll/N,eqCalled:wCalled?eqCalled/wCalled:0,to:T,risk:a}}
+function raiseCandidates(p){
+  const toCall=G.currentBet-p.bet,pot=potTotal(),maxTo=p.bet+p.stack,minTo=Math.min(maxTo,G.currentBet===0?BBA:G.currentBet+G.minRaise);
+  if(maxTo<=G.currentBet)return[];
+  const r=v=>clamp(Math.round(v/SBA)*SBA,minTo,maxTo);const c=[];
+  if(G.street===0)c.push(['3배',r(G.currentBet*3)]);
+  else if(toCall===0){c.push(['½팟',r(pot*.5)]);c.push(['¾팟',r(pot*.75)])}
+  else c.push(['2.5배',r(G.currentBet*2.5)]);
+  c.push(['올인',maxTo]);
+  const seen=new Set();return c.map(([l,v])=>[v>=maxTo?'올인':l,v]).filter(([l,v])=>!seen.has(v)&&seen.add(v))}
+function coach(p){
+  const idx=G.players.indexOf(p),pos=posName(idx),toCall=G.currentBet-p.bet,pot=potTotal();
+  const pct=handPct(p.cards),key=keyOf(p.cards[0],p.cards[1]);
+  const X=buildSamples(p,900);
+  let eq=0;const full=(1<<X.opps.length)-1;X.S.forEach(it=>eq+=shareAmong(it,full));eq/=X.S.length;
+  const need=toCall>0?toCall/(pot+toCall):0;
+  const A={pos,toCall,pot,opps:X.opps.length,ranges:X.ranges,pct,key,eq,need,street:G.street,kind:'',best:'',reason:'',X,p};
+  const top=`상위 ${Math.max(1,Math.round(pct*100))}%`;
+  if(G.street>0){A.made=describe(p.cards,G.board);
+    if(X.opps.length){const cnt={};X.S.forEach(it=>it.feat.forEach(f=>cnt[f.tier]=(cnt[f.tier]||0)+1));const tot=X.S.length*X.opps.length;
+      A.tierMix=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).map(([t,n])=>`${TIER_KO[t]} ${Math.round(n/tot*100)}%`).join(', ')}}
+  if(G.street===0&&G.numRaises===0&&pos==='SB'){A.kind='sbvbb';const inR=RFIB[1].has(key);A.rfiPct=RFIBP[1];
+    A.best=inR?'raise':pct<=.7?'call':'fold';
+    A.reason=`앞이 다 폴드해서 BB 한 명만 남은 사실상 헤즈업입니다. ${key}(${top}) · BB 전체 범위 대비 승률 ${(eq*100).toFixed(0)}%, 콜(채우기)에 필요한 승률 ${(need*100).toFixed(0)}%.`+(A.best==='raise'?' SB 레이즈 범위(상위 약 ${Math.round(RFIBP[1]*100)}%) 안이라 3BB로 레이즈해 주도권을 가져갑니다.':A.best==='call'?' 레이즈하기엔 약하지만 0.5BB만 더 내면 되고 팟 오즈가 좋아 채우는(콜) 게 이득입니다. 다만 포스트플랍에서 아웃오브포지션이라 큰 팟은 피하세요.':' 0.5BB라도 아웃오브포지션에서 이 패로 플랍을 보면 손해가 더 큽니다.');return A}
+  if(G.street===0&&G.numRaises===0&&!(pos==='BB'&&toCall===0)){A.kind='rfi';const bh=behindOf(idx);const inR=RFIB[bh]?.has(key);A.rfiPct=RFIBP[bh];A.best=inR?'raise':'fold';
+    A.reason=`${pos} 오픈 범위(뒤에 ${bh}명 · 상위 약 ${Math.round(A.rfiPct*100)}%) ${inR?'안':'밖'}의 핸드 ${key}(${top}).`+(inR?' 앞에서 다 폴드했으니 2–2.5BB로 먼저 레이즈합니다.':' 뒤에 남은 사람이 많을수록 약한 핸드로 들어가면 손해입니다.');return A}
+  if(G.street===0&&G.numRaises===0){A.kind='bbopt';A.best=pct<=.15?'raise':'check';A.reason=pct<=.15?`${key}(${top})는 림프 팟에서 레이즈할 만한 핸드입니다.`:`${key}(${top})는 공짜로 플랍을 보는 게 낫습니다.`;return A}
+  A.kind='ev';
+  const hu=X.opps.length===1,o0=X.opps[0],heroFirst=hu&&postRank(idx)<postRank(G.players.indexOf(o0));
+  A.sim=hu&&G.street<3;
+  const avg=f=>{let s=0;for(const it of X.S)s+=f(it);return s/X.S.length};
+  const opts=[];
+  if(toCall>0){opts.push({t:'fold',label:'폴드',ev:0});const c=Math.min(toCall,p.stack);
+    const simOK=A.sim&&p.stack-c>0&&o0.stack>0;
+    opts.push({t:'call',label:'콜',ev:simOK?avg(it=>playOut(it,p.cards,pot+c,p.stack-c,o0.stack,G.street+1,heroFirst,false))-c:eq*(pot+c)-c})}
+  else{const pending=hu&&!o0.acted;
+    opts.push({t:'check',label:'체크',ev:hu&&p.stack>0&&o0.stack>0?avg(it=>playOut(it,p.cards,pot,p.stack,o0.stack,pending?G.street:G.street+1,heroFirst,pending)):eq*pot})}
+  for(const[l,v]of raiseCandidates(p)){const r=evRaise(p,X,v);opts.push({t:toCall===0&&G.street>0?'bet':'raise',label:`${toCall===0&&G.street>0?'벳':'레이즈'} ${l} (${fmt(v)})`,ev:r.ev,r})}
+  opts.sort((a,b)=>b.ev-a.ev);A.opts=opts;let b=opts[0];
+  const passive=opts.find(o=>!o.r);if(b.r&&passive&&passive.ev>=b.ev-Math.max(.3*BBA,.03*pot))b=passive;
+  /* the model is rough: only prefer an all-in over a normal size when it is clearly better */
+  if(b.r&&b.r.to>=p.bet+p.stack){const alt=opts.find(o=>o.r&&o.r.to<p.bet+p.stack);
+    const effShove=Math.min(b.r.risk,Math.max(...X.opps.map(o=>o.stack+o.bet-p.bet)));
+    const myTier=G.street>0?tierOf(p.cards,G.board):'';
+    if(alt&&(alt.ev>=b.ev-Math.max(BBA,.1*pot)||(G.street>0&&effShove>2*pot&&!['nuts','strong'].includes(myTier))))b=alt}
+  A.best=b.t;A.bestOpt=b;
+  const hand=A.made?`${A.made.text}${A.made.draws.length?' + '+A.made.draws.join(', '):''} · `:`${key}(${top}) · `;
+  const simNote=A.sim?' (턴·리버 베팅까지 시뮬레이션한 기대값 기준)':'';
+  if(b.r){const be=b.r.risk/(b.r.risk+pot);
+    if(eq<.45)A.reason=`${hand}승률은 ${(eq*100).toFixed(0)}%로 낮지만 ${b.r.fold>=be?`상대가 약 ${(b.r.fold*100).toFixed(0)}% 폴드할 것으로 보여(본전 ${(be*100).toFixed(0)}%) 블러프가 이득입니다.`:`상대 폴드 확률 ${(b.r.fold*100).toFixed(0)}%(본전 ${(be*100).toFixed(0)}%)만으론 부족해도, 콜 받았을 때 승률 ${(b.r.eqCalled*100).toFixed(0)}%가 있어 세미블러프로 이득입니다.`}${simNote}`;
+    else A.reason=`${hand}승률 ${(eq*100).toFixed(0)}%. 앞서 있을 때가 많아 ${b.t==='bet'?'벳':'레이즈'}으로 더 나쁜 패에게 칩을 받습니다.${simNote}`}
+  else if(b.t==='call')A.reason=eq>=need?`${hand}승률 ${(eq*100).toFixed(0)}% ≥ 필요 승률 ${(need*100).toFixed(0)}%라 콜. 레이즈하면 더 나쁜 패는 폴드하고 더 좋은 패만 남습니다.${simNote}`:`${hand}승률 ${(eq*100).toFixed(0)}%는 필요 승률 ${(need*100).toFixed(0)}%보다 낮지만, 맞으면 다음 스트리트에서 더 받을 수 있어(임플라이드 오즈) 콜이 이득입니다.${simNote}`;
+  else if(b.t==='fold')A.reason=eq<need?`${hand}승률 ${(eq*100).toFixed(0)}% < 필요 승률 ${(need*100).toFixed(0)}%. 블러프 레이즈를 해도 상대가 충분히 폴드하지 않습니다.${simNote}`:`${hand}승률 ${(eq*100).toFixed(0)}%는 필요 승률 ${(need*100).toFixed(0)}%보다 높지만, 남은 스트리트에서 계속 베팅을 맞아야 해서 실제로 끝까지 가져가기 어렵습니다. 그래서 폴드가 낫습니다.${simNote}`;
+  else A.reason=`${hand}승률 ${(eq*100).toFixed(0)}%. 벳해도 더 나쁜 패는 폴드하고 더 좋은 패만 콜해서, 체크로 팟을 작게 두는 편이 낫습니다.${simNote}`;
+  return A}
+
+function grade(A,act,p){
+  let a=act.t;if(a==='raise'&&A.street>0&&A.toCall===0)a='bet';
+  const notes=[];let g;
+  if(A.kind==='rfi'){
+    if(a===A.best)g='good';
+    else if(A.best==='fold')g=(a==='raise'&&A.pct<=A.rfiPct*1.3)?'ok':(a==='call'&&A.pos==='SB'&&A.pct<.55?'ok':'bad');
+    else g=(a==='call'&&A.pos==='SB')?'ok':(a==='fold'&&A.pct>=A.rfiPct*.8?'ok':'bad');
+    if(a==='call'&&A.pos!=='SB')notes.push('앞이 다 폴드한 상황의 림프(콜)는 주도권을 버리는 선택입니다. 레이즈 아니면 폴드로 가세요.');
+    if(g==='ok'&&a!==A.best)notes.push('경계 핸드라 어느 쪽도 큰 실수는 아닙니다.');
+    if(act.t==='raise'){const stackTot=p.stack+p.bet;
+      if(act.to>=stackTot&&stackTot>=20*BBA){notes.push(`스택이 ${bb(stackTot)}일 때 오픈 올인은 너무 큽니다. 강한 패는 작게 열어야 약한 패에게 콜을 받고, 약한 패로 블러프 올인하면 강한 패에게만 콜을 받습니다. 그래서 핸드가 좋아도 이 사이즈는 실수로 채점합니다.`);g='bad'}
+      else if(act.to>3.5*BBA){notes.push(`오픈 사이즈 ${bb(act.to)}는 큽니다. 이 스택에선 2–2.5BB가 표준입니다.`);if(g==='good')g='ok'}}
+    return{g,notes,a}}
+  if(A.kind==='bbopt'){return{g:a===A.best?'good':'ok',notes,a}}
+  if(A.kind==='sbvbb'){
+    if(a===A.best)g='good';
+    else if(A.best==='raise')g=a==='call'?'ok':'bad';
+    else if(A.best==='call')g=a==='raise'?(A.pct<=.5?'ok':'bad'):(A.pct>=.6?'ok':'bad');
+    else g=a==='call'&&A.pct<=.8?'ok':'bad';
+    if(act.t==='raise'){const stackTot=p.stack+p.bet;
+      if(act.to>=stackTot&&stackTot>=20*BBA){notes.push(`스택이 ${bb(stackTot)}일 때 올인은 너무 큽니다. BB가 강한 패로만 콜해서 손해를 봅니다.`);g='bad'}
+      else if(act.to>4*BBA){notes.push(`레이즈 사이즈 ${bb(act.to)}는 큽니다. SB에선 3BB 정도가 표준입니다.`);if(g==='good')g='ok'}}
+    return{g,notes,a}}
+  let chosen;
+  if(a==='raise'||a==='bet'){const r=evRaise(p,A.X,act.to);chosen={ev:r.ev,r};A.chosenR=r;
+    const be=r.risk/(r.risk+A.pot);
+    if(A.eq<.45)notes.push(`블러프 판단: 상대 폴드 확률 약 ${(r.fold*100).toFixed(0)}%, 본전 폴드율 ${(be*100).toFixed(0)}%. 콜 당했을 때 승률 ${(r.eqCalled*100).toFixed(0)}%.`);
+    else notes.push(`상대 폴드 확률 약 ${(r.fold*100).toFixed(0)}%, 콜 당했을 때 승률 ${(r.eqCalled*100).toFixed(0)}%.`)}
+  else chosen=A.opts.find(o=>o.t===a)||{ev:0};
+  A.chosenEV=chosen.ev;
+  const loss=A.bestOpt.ev-chosen.ev,tolG=Math.max(.5*BBA,.05*A.pot),tolO=Math.max(2*BBA,.18*A.pot);
+  g=loss<=tolG?'good':loss<=tolO?'ok':'bad';
+  if(g!=='good'&&a===A.best)notes.push('방향은 맞지만 사이즈에 따라 기대값 차이가 납니다.');
+  if((a==='raise'||a==='bet')&&act.to>=p.bet+p.stack&&A.eq<.45&&g==='bad')notes.push('블러프 올인은 상대 범위가 약하고 콜하기 어려울 때만 통합니다. 지금 상대 범위엔 콜할 패가 많습니다.');
+  return{g,notes,a}}
+
+/* ===== bots ===== */
+function botDecide(p){
+  const st=p,toCall=G.currentBet-p.bet,pot=potTotal(),maxTo=p.bet+p.stack,r=Math.random(),idx=G.players.indexOf(p),pos=posName(idx);
+  const raiseTo=to=>{to=Math.round(to/SBA)*SBA;to=Math.max(to,G.currentBet+G.minRaise);if(to>=maxTo*.7)to=maxTo;to=Math.min(to,maxTo);if(to<=G.currentBet)return toCall>0?{t:'call'}:{t:'check'};return{t:'raise',to}};
+  if(G.street===0){const pct=handPct(p.cards);
+    if(G.numRaises===0){
+      if(pos==='BB'&&toCall===0)return pct<.12*st.loose?raiseTo(G.currentBet+3*BBA):{t:'check'};
+      const open=(RFIBP[behindOf(idx)]||.2)*st.loose;const limpers=G.players.filter(o=>o.limped&&!o.folded).length;
+      if(pct<=open)return raiseTo((pos==='SB'?3:2.5)*BBA+limpers*BBA);
+      if(st.station&&pct<=Math.min(.6,open*1.6)&&r<.6)return{t:'call'};
+      if(pos==='SB'&&pct<=open*1.4&&r<.3)return{t:'call'};
+      return toCall>0?{t:'fold'}:{t:'check'}}
+    const lvl=G.numRaises,base=lvl===1?.22:lvl===2?.08:.04;const odds=toCall/(pot+toCall);
+    const priceAdj=1+Math.max(0,.33-odds)*2.2;const allInCall=toCall>=p.stack;
+    const callPct=base*st.loose*priceAdj*(st.station?1.5:1)*(allInCall?.6:1),raisePct=base*.35*st.aggr;
+    if(pct<=raisePct&&!allInCall){let to=G.currentBet*3;if(lvl>=2||to>=maxTo*.45)to=maxTo;return raiseTo(to)}
+    if(pct<=callPct)return{t:'call'};
+    return{t:'fold'}}
+  const opps=activeP().filter(o=>o!==p);
+  const eq=equity(p.cards,G.board,opps.map(o=>{const m=oppModel(o);return{...m,pct:Math.min(1,m.pct*1.3)}}),350);
+  if(toCall===0){
+    if(eq>.62&&r<.85*Math.min(1,st.aggr))return raiseTo(pot*(.5+Math.random()*.25));
+    if(eq<.3&&opps.length===1&&r<.2*st.aggr)return raiseTo(pot*.5);
+    return{t:'check'}}
+  const need=toCall/(pot+toCall);
+  if(eq>.75&&r<.5*st.aggr&&maxTo>G.currentBet)return raiseTo(G.currentBet*2.5);
+  if(eq+(st.station?.08:0)>=need||r<.03)return{t:'call'};
+  return{t:'fold'}}
+
+/* ===== engine ===== */
+function applyAction(p,a){
+  const toCall=G.currentBet-p.bet,idx=G.players.indexOf(p);
+  if(a.t==='raise'&&Math.min(a.to,p.bet+p.stack)<=G.currentBet)a={t:'call'};
+  if(a.t==='call'&&toCall===0)a={t:'check'};
+  if(a.t==='fold'){p.folded=true;p.act='폴드'}
+  else if(a.t==='check'){p.act='체크'}
+  else if(a.t==='call'){put(p,toCall);p.act=p.allIn?'올인 콜':'콜 '+fmt(p.bet);if(G.street>0)p.postCalled=true;
+    if(G.street===0){if(G.numRaises===0)p.limped=true;else p.calledLevel=Math.max(p.calledLevel,G.numRaises)}}
+  else{const to=Math.min(a.to,p.bet+p.stack);const inc=to-G.currentBet;const wasBet=G.currentBet===0;put(p,to-p.bet);
+    if(inc>=G.minRaise){G.minRaise=inc;G.players.forEach(o=>{if(o!==p)o.acted=false})}else G.players.forEach(o=>{if(o!==p&&o.bet<to)o.acted=false});
+    G.currentBet=to;G.numRaises++;
+    if(G.street===0){p.preLevel=G.numRaises;p.prePos=posName(idx);p.preBehind=behindOf(idx);if(G.numRaises===1&&p.allIn)p.preShove=true}else p.aggPost=true;
+    p.act=(p.allIn?'올인 ':'')+(wasBet&&G.street>0?'벳 ':'레이즈 ')+fmt(to)}
+  p.acted=true;
+  G.actLog.push(`${['프리플랍','플랍','턴','리버'][G.street]}: ${p.hero?'나':p.name}(${posName(idx)}) ${p.act}`);
+  G.ticker=`<strong>${p.name}</strong> ${p.act}`}
+
+async function bettingRound(start){
+  let i=start,guard=0;
+  while(guard++<300){
+    if(activeP().length===1)return;
+    const can=G.players.filter(p=>!p.folded&&!p.allIn);
+    if(can.length===0)return;
+    if(can.every(p=>p.acted&&p.bet===G.currentBet))return;
+    if(can.length===1&&can[0].bet>=G.currentBet)return;
+    const p=G.players[i];
+    if(!p.folded&&!p.allIn&&(!p.acted||p.bet<G.currentBet)){
+      G.acting=i;render();
+      let a;
+      if(p.hero)a=await heroTurn(p);
+      else{await sleep(DELAY);a=botDecide(p)}
+      applyAction(p,a);G.acting=-1;render()}
+    i=(i+1)%NPN()}}
+
+function newDeck(){const d=[...Array(52).keys()];for(let i=51;i>0;i--){const j=Math.random()*(i+1)|0;[d[i],d[j]]=[d[j],d[i]]}return d}
+
+async function playHand(){
+  G.hand++;G.stats.hands++;G.showdown=false;G.winners=new Set();G.handFb=[];G.focus=0;G.result=null;G.actLog=[];$('resultBox').innerHTML='';
+  G.players.forEach(p=>{if(!p.hero&&p.stack<=0){p.stack=BUYIN;p.reloaded=true}else p.reloaded=false});
+  G.button=(G.button+1)%NPN();G.deck=newDeck();G.board=[];G.street=0;G.currentBet=0;G.minRaise=BBA;G.numRaises=0;
+  G.players.forEach(p=>Object.assign(p,{cards:[G.deck.pop(),G.deck.pop()],folded:false,allIn:false,bet:0,total:0,acted:false,act:'',preLevel:0,calledLevel:0,limped:false,preShove:false,prePos:'',preBehind:0,aggPost:false,postCalled:false}));
+  const sbI=sbIdx(),bbI=bbIdx();put(G.players[sbI],SBA);put(G.players[bbI],BBA);
+  G.players[sbI].act='SB '+fmt(G.players[sbI].bet);G.players[bbI].act='BB '+fmt(G.players[bbI].bet);
+  G.currentBet=BBA;G.actLog.push(`블라인드: ${G.players[sbI].hero?'나':G.players[sbI].name}(SB) ${fmt(G.players[sbI].bet)}, ${G.players[bbI].hero?'나':G.players[bbI].name}(BB) ${fmt(G.players[bbI].bet)}`);
+  const rl2=G.players.filter(p=>p.reloaded).map(p=>p.name);
+  G.ticker=`핸드 #${G.hand} · 버튼 <strong>${G.players[G.button].name}</strong>`+(rl2.length?` · ${rl2.join(', ')} 30,000 재충전`:'');
+  renderCoach();render();await sleep(400);
+  for(let s=0;s<4;s++){
+    if(s>0){G.players.forEach(p=>{p.bet=0;p.acted=false;if(!p.folded&&!p.allIn)p.act=''});G.currentBet=0;G.minRaise=BBA;G.numRaises=0;G.street=s;
+      if(s===1)G.board.push(G.deck.pop(),G.deck.pop(),G.deck.pop());else G.board.push(G.deck.pop());
+      G.actLog.push(`--- ${['','플랍','턴','리버'][s]}: ${G.board.map(c=>rl(cr(c))+SYM[cs(c)]).join(' ')}`);
+      G.ticker=['','플랍','턴','리버'][s];render();await sleep(500)}
+    if(activeP().length>1)await bettingRound(s===0?(bbI+1)%NPN():(G.button+1)%NPN());
+    if(activeP().length===1)break}
+  finishHand()}
+
+function finishHand(){setTimeout(saveSession,0);
+  const act=activeP();const res={lines:[],heroDelta:0};const before=G.players.find(p=>p.hero).stack+G.players.find(p=>p.hero).total;
+  if(act.length===1){const w=act[0];const amt=potTotal();w.stack+=amt;G.winners.add(G.players.indexOf(w));
+    res.title=`${w.name} 승 · ${fmt(amt)}`;res.lines.push(`나머지 전원 폴드로 ${w.name}가 팟 ${fmt(amt)}을 가져갑니다.`)}
+  else{G.showdown=true;
+    const sc=new Map(act.map(p=>[p,ev([...p.cards,...G.board])]));
+    const levels=[...new Set(G.players.map(p=>p.total).filter(t=>t>0))].sort((a,b)=>a-b);let prev=0;const won=new Map();
+    for(const L of levels){let amt=0;G.players.forEach(p=>amt+=Math.max(0,Math.min(p.total,L)-prev));
+      let elig=act.filter(p=>p.total>=L);if(!elig.length)elig=act;const m=Math.max(...elig.map(p=>sc.get(p)));const ws=elig.filter(p=>sc.get(p)===m);
+      const share=Math.floor(amt/ws.length/100)*100;let rem=amt-share*ws.length;
+      ws.forEach((p,k)=>{const g=share+(k===0?rem:0);p.stack+=g;won.set(p,(won.get(p)||0)+g)});prev=L}
+    won.forEach((v,p)=>G.winners.add(G.players.indexOf(p)));
+    const names=[...won.keys()];
+    res.title=names.length>1?`팟 분할 · ${names.map(p=>p.name).join(', ')}`:`${names[0].name} 승 · ${fmt(won.get(names[0]))}`;
+    act.forEach(p=>{res.lines.push(`${p.name} ${p.cards.map(c=>rl(cr(c))+SYM[cs(c)]).join(' ')}: ${CAT[sc.get(p)>>20]}${won.has(p)?` → +${fmt(won.get(p))}`:''}`)})}
+  const hero=G.players.find(p=>p.hero);res.heroDelta=hero.stack-before;G.result=res;G.acting=-1;
+  G.ticker=res.title;render();renderResult()}
+
+/* ===== hero turn ===== */
+let sel={to:0,preset:''};
+function heroTurn(p){return new Promise(resolve=>{
+  G.advice=null;G.heroWait={p,resolve};G.hintShown=false;setupControls(p);render();
+  setTimeout(()=>{G.advice=coach(p);if(G.hintShown)renderCoach()},30)})}
+function setupControls(p){
+  const toCall=G.currentBet-p.bet,maxTo=p.bet+p.stack,pot=potTotal();
+  let minTo=G.currentBet===0?BBA:G.currentBet+G.minRaise;minTo=Math.min(minTo,maxTo);
+  const canRaise=maxTo>G.currentBet;
+  $('bFold').disabled=false;
+  $('bCall').innerHTML=toCall===0?'체크<small>C</small>':(toCall>=p.stack?'올인 콜':'콜')+`<small>C · ${fmt(Math.min(toCall,p.stack))}</small>`;
+  $('bCall').disabled=false;
+  const presets=[];
+  if(G.street===0&&G.numRaises===0){[2,2.5,3].forEach(x=>presets.push([`${x}BB`,x*BBA]))}
+  else if(G.street===0){presets.push(['3배',G.currentBet*3]);presets.push(['팟',G.currentBet+pot+toCall])}
+  else if(toCall===0){[[1/3,'⅓팟'],[1/2,'½팟'],[2/3,'⅔팟'],[1,'팟']].forEach(([f,l])=>presets.push([l,pot*f]))}
+  else{presets.push(['2.5배',G.currentBet*2.5]);presets.push(['팟',G.currentBet+pot+toCall])}
+  presets.push(['올인',maxTo]);
+  const clamp=v=>Math.min(maxTo,Math.max(minTo,Math.round(v/SBA)*SBA));
+  $('sizes').innerHTML=canRaise?presets.map(([l,v],i)=>`<button class="size" data-v="${clamp(v)}" aria-pressed="false">${l}</button>`).join(''):'';
+  const amt=$('amt');amt.min=minTo;amt.max=maxTo;amt.step=SBA;amt.disabled=!canRaise||minTo>=maxTo;
+  const def=clamp(presets[0][1]);setAmt(def);
+  $('sizes').querySelectorAll('.size').forEach(b=>b.onclick=()=>setAmt(+b.dataset.v));
+  $('bRaise').disabled=!canRaise;
+  $('hintBtn').disabled=false;$('waitTxt').textContent='내 차례입니다';
+  function setAmt(v){sel.to=v;amt.value=v;
+    $('amtOut').textContent=`${fmt(v)} (${bb(v)})`;
+    $('sizes').querySelectorAll('.size').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.v===v));
+    $('bRaise').innerHTML=(v>=maxTo?'올인':(G.currentBet===0?'벳':'레이즈'))+`<small>R · ${fmt(v)}</small>`}
+  amt.oninput=()=>setAmt(+amt.value)}
+function lockControls(msg){['bFold','bCall','bRaise','hintBtn'].forEach(id=>$(id).disabled=true);$('amt').disabled=true;$('sizes').innerHTML='';$('waitTxt').textContent=msg||'';$('amtOut').textContent=''}
+
+function heroAct(t){const w=G.heroWait;if(!w)return;const p=w.p;
+  if(!G.advice)G.advice=coach(p);
+  const act=t==='raise'?{t:'raise',to:sel.to}:t==='call'?(G.currentBet-p.bet===0?{t:'check'}:{t:'call'}):{t:'fold'};
+  const gr=grade(G.advice,act,p);
+  G.stats.dec++;G.stats[gr.g]++;
+  const label=act.t==='raise'?(gr.a==='bet'?'벳 ':'레이즈 ')+fmt(act.to):ALABEL[act.t];
+  G.handFb.unshift({A:G.advice,gr,label,street:['프리플랍','플랍','턴','리버'][G.street],chat:[],hand:G.hand,ctx:buildCtx(G.advice,gr,label,p)});G.focus=0;
+  G.heroWait=null;lockControls('상대 차례…');renderCoach();w.resolve(act)}
+
+/* ===== render ===== */
+function cardHTML(c,cls=''){return `<div class="card s-${cs(c)} ${cls}" aria-label="${rl(cr(c))}${SYM[cs(c)]}"><span class="r">${rl(cr(c))}</span><span class="s">${SYM[cs(c)]}</span></div>`}
+const backHTML=cls=>`<div class="card back ${cls}"></div>`;
+function render(){syncNP();
+  const hero=G.players[0];
+  const net=hero.stack+(G.result?0:hero.total)-G.invested;
+  $('meta').innerHTML=`<div>핸드<b>#${G.hand}</b></div><div>내 스택<b>${fmt(hero.stack)}</b></div><div>손익<b class="${net>0?'pos':net<0?'neg':''}">${net>0?'+':''}${fmt(net)}</b></div><div>리바인 잔여<b>${fmt(G.rebuyLeft)}</b></div>`;
+  const winCards=new Set();if(G.showdown&&G.result)G.winners.forEach(i=>best5([...G.players[i].cards,...G.board]).forEach(c=>winCards.add(c)));
+  $('bots').style.setProperty('--cols',Math.min(4,NPN()-1));
+  $('bots').innerHTML=G.players.slice(1).map((p,k)=>{const i=k+1;const pos=posName(i);
+    const show=G.showdown&&!p.folded;
+    const cards=p.cards?(show?p.cards.map(c=>cardHTML(c,'sm '+(winCards.has(c)?'win':''))).join(''):(p.folded?'':backHTML('sm')+backHTML('sm'))):'';
+    return `<div class="seat ${G.acting===i?'turn':''} ${p.folded?'out':''}"><span class="badge ${i===G.button?'dealer':''}">${pos}${i===G.button&&pos!=='BTN'?'·BTN':''}</span>
+      <div class="nm">${p.name}</div><div class="sty">${p.sty}</div><div class="stk">${fmt(p.stack)}</div>
+      <div class="cards">${cards}</div><div class="act">${p.act||'&nbsp;'}</div><div class="betchip">${p.bet?fmt(p.bet):''}</div></div>`}).join('');
+  const slots=[];for(let i=0;i<5;i++)slots.push(G.board[i]!==undefined?cardHTML(G.board[i],winCards.has(G.board[i])?'win':''):'<div class="card slot"></div>');
+  $('board').innerHTML=slots.join('');
+  const toCall=G.heroWait?G.currentBet-hero.bet:0;
+  $('potline').innerHTML=`<span class="chip">팟 <em>${fmt(potTotal())}</em></span>`+(toCall>0?`<span class="chip">콜 <em>${fmt(Math.min(toCall,hero.stack))}</em></span>`:'');
+  $('ticker').innerHTML=G.ticker||'';
+  const pos=posName(0);const made=hero.cards&&G.board.length>=3?describe(hero.cards,G.board):null;
+  $('hero').className='hero '+(G.acting===0?'turn':'');
+  $('hero').innerHTML=`<span class="badge ${G.button===0?'dealer':''}">${pos}${G.button===0&&pos!=='BTN'?'·BTN':''}</span><div class="cards">${hero.cards&&!hero.folded?hero.cards.map(c=>cardHTML(c,'big '+(winCards.has(c)?'win':''))).join(''):(hero.cards?hero.cards.map(c=>cardHTML(c,'big')).join('').replaceAll('class="card','class="card dimmed'):'')}</div>
+    <div class="info"><span class="nm">나 ${hero.folded?'· 폴드':''}${hero.allIn?'· 올인':''}</span><span class="stk">${fmt(hero.stack)}</span><span class="made">${made?made.text+(made.draws.length?' · '+made.draws.join(', '):''):(hero.cards?keyOf(hero.cards[0],hero.cards[1]):'')}</span>${hero.bet?`<span class="betchip">베팅 ${fmt(hero.bet)}</span>`:''}</div>`;
+  document.querySelectorAll('.dimmed').forEach(e=>e.style.opacity=.4);
+  const s=G.stats;const acc=s.dec?Math.round((s.good+s.ok*.5)/s.dec*100):0;
+  $('totals').innerHTML=`<span>판단 <b>${s.dec}</b></span><span>좋음 <b>${s.good}</b></span><span>무난 <b>${s.ok}</b></span><span>실수 <b>${s.bad}</b></span><span>판단 점수 <b>${s.dec?acc+'점':'–'}</b></span>`}
+
+function fbHTML(f,isLatest){
+  const {A,gr,label,street}=f;const V={good:'좋은 선택',ok:'무난',bad:'실수'}[gr.g];
+  const bestLbl=A.bestOpt?A.bestOpt.label:ALABEL[A.best];
+    const ranges=A.ranges.map(r=>`${r.name}: ${r.desc}`).join('<br>');
+  return `<div class="fb ${gr.g}"><div class="top"><span class="verdict">${V}</span><span class="ctx">${street} · ${A.pos} · 내 선택 <strong>${label}</strong> · 추천 <strong>${bestLbl}</strong></span></div>
+   <p>${A.reason}</p>
+   ${gr.notes.map(n=>`<div class="note">${n}</div>`).join('')}
+   ${isLatest?`<dl class="math"><dt>예상 승률</dt><dd class="hl">${(A.eq*100).toFixed(1)}%</dd>
+     ${A.toCall>0?`<dt>필요 승률</dt><dd>${fmt(A.toCall)} ÷ (${fmt(A.pot)} + ${fmt(A.toCall)}) = <span class="hl">${(A.need*100).toFixed(1)}%</span></dd>`:''}
+     <dt>내 핸드</dt><dd>${A.key} · 상위 ${Math.max(1,Math.round(A.pct*100))}%</dd></dl>
+     ${A.opts?`<dl class="math"><dt style="grid-column:1/-1">선택지별 기대값 (지금 기준 손익)</dt>${A.opts.map(o=>`<dt${o===A.bestOpt?' class="hl"':''}>${o.label}${o.r?` · 폴드 ${(o.r.fold*100).toFixed(0)}%`:''}</dt><dd${o===A.bestOpt?' class="hl"':''}>${o.ev>=0?'+':''}${bb(o.ev)}</dd>`).join('')}${A.chosenR?`<dt>내 선택 (${fmt(A.chosenR.to)})</dt><dd>${A.chosenEV>=0?'+':''}${bb(A.chosenEV)}</dd>`:''}</dl>`:''}
+     <div class="ctx">상대가 들고 있을 법한 패<br>${ranges}${A.tierMix?`<br>이 보드에서 상대 패 구성 추정: ${A.tierMix}`:''}</div>`:''}</div>`}
+
+function renderCoach(){
+  const c=$('coach');let h='';
+  if(G.hintShown&&G.heroWait){if(!G.advice)h+=`<div class="fb hint"><div class="top"><span class="verdict">계산 중…</span></div></div>`;
+    else{const A=G.advice;h+=`<div class="fb hint"><div class="top"><span class="verdict">힌트</span><span class="ctx">판단 전 참고 · 기록에 영향 없음</span></div><p>승률 <strong>${(A.eq*100).toFixed(0)}%</strong>${A.toCall>0?` · 필요 승률 <strong>${(A.need*100).toFixed(0)}%</strong>`:''}</p><div class="ctx">${A.ranges.map(r=>`${r.name}: ${r.desc}`).join('<br>')}</div></div>`}}
+  if(G.handFb.length){const fi=G.focus||0;h+=fbHTML(G.handFb[fi],true);h+=`<div class="chat" id="chat"></div>`;
+    if(G.handFb.length>1)h+=`<div class="hist"><div class="ctx">이번 핸드의 다른 결정 (눌러서 보기·질문)</div>${G.handFb.map((f,i)=>i===fi?'':`<button class="histbtn" data-i="${i}"><span class="dot ${f.gr.g}"></span><span>${f.street} · ${f.label} (추천 ${f.A.bestOpt?f.A.bestOpt.label:ALABEL[f.A.best]}) · 승률 ${(f.A.eq*100).toFixed(0)}%${f.chat.length?' · 대화 있음':''}</span></button>`).join('')}</div>`}
+  c.innerHTML=h;c.querySelectorAll('.histbtn').forEach(b=>b.onclick=()=>{if(chatBusy)return;G.focus=+b.dataset.i;renderCoach()});renderChat()}
+
+function renderResult(){
+  const r=G.result,hero=G.players[0];
+  const busted=hero.stack<=0;let btns='';
+  if(!busted)btns=`<button class="btn prim" id="nextBtn">다음 핸드<small>Enter</small></button>`;
+  else if(G.rebuyLeft>0)btns=`<button class="btn prim" id="rebuyBtn">리바인 +${fmt(Math.min(REBUY_UNIT,G.rebuyLeft))}<small>Enter</small></button>`;
+  else btns=`<button class="btn prim" id="restartBtn">새 세션 시작<small>Enter</small></button>`;
+  const handG=G.handFb.reduce((m,f)=>(m[f.gr.g]++,m),{good:0,ok:0,bad:0});
+  const summary=G.handFb.length?`이번 핸드 판단: 좋음 ${handG.good} · 무난 ${handG.ok} · 실수 ${handG.bad}`:'이번 핸드는 판단할 차례가 없었습니다.';
+  let over='';
+  if(busted&&G.rebuyLeft<=0){const s=G.stats;over=`<p><strong>세션 종료.</strong> ${G.hand}핸드, 총 ${fmt(G.invested)} 투입. 판단 ${s.dec}번 중 좋음 ${s.good}, 무난 ${s.ok}, 실수 ${s.bad}.</p>`}
+  else if(busted)over=`<p>칩을 모두 잃었습니다. 리바인 한도 안에서 다시 앉을 수 있습니다.</p>`;
+  $('resultBox').innerHTML=(`<div class="result"><h2>${r.title}</h2><ul>${r.lines.map(l=>`<li>${l}</li>`).join('')}</ul>
+    <div class="ctx" style="font-size:13px">내 손익 이번 핸드 <strong style="color:${r.heroDelta>0?'var(--good)':r.heroDelta<0?'var(--bad)':'var(--ink)'}">${r.heroDelta>0?'+':''}${fmt(r.heroDelta)}</strong> · ${summary}</div>${over}${btns}</div>`);
+  lockControls('');
+  const nb=$('nextBtn'),rb=$('rebuyBtn'),sb=$('restartBtn');
+  if(nb)nb.onclick=next;if(rb)rb.onclick=()=>{const a=Math.min(REBUY_UNIT,G.rebuyLeft);G.rebuyLeft-=a;G.invested+=a;G.players[0].stack+=a;saveSession();next()};
+  if(sb)sb.onclick=()=>{try{localStorage.removeItem(SAVE_KEY)}catch(e){}startSession()};
+  (nb||rb||sb).focus({preventScroll:true})}
+
+function next(){if(G.running)return;if(G.pendingNP){NP=G.pendingNP;G.pendingNP=0;try{localStorage.removeItem(SAVE_KEY)}catch(e){}startSession();return}G.running=true;G.result=null;lockControls('딜 중…');playHand().finally(()=>{G.running=false})}
+function startSession(){G.pendingNP=0;initPlayers();G.hand=0;G.rebuyLeft=REBUY_TOTAL;G.invested=BUYIN;G.stats={hands:0,dec:0,good:0,ok:0,bad:0};G.result=null;next()}
+
+/* ===== discussion with Claude ===== */
+const cardTxt=c=>rl(cr(c))+SYM[cs(c)];
+let sampleState='ready',chatCtl=null,chatBusy=false;
+const LS={get:(k,d='')=>{try{return localStorage.getItem(k)??d}catch(e){return d}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
+const MODELS=[['claude-sonnet-5-5','Sonnet 5.5 · 기본'],['claude-haiku-4-5-20251001','Haiku 4.5 · 빠르고 저렴'],['claude-opus-5-5','Opus 5.5 · 가장 깊이 있게']];
+async function sampleFn(input,opts={}){
+  const key=LS.get('apiKey').trim();if(!key)throw{code:'no_key'};
+  const turns=typeof input==='string'?[{role:'user',content:input}]:input;const msgs=[];
+  for(const t of turns){const last=msgs[msgs.length-1];if(last&&last.role===t.role)last.content+='\n\n'+t.content;else msgs.push({role:t.role,content:t.content})}
+  let res;
+  try{res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',signal:opts.signal,
+    headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:LS.get('model',MODELS[0][0]),max_tokens:1500,stream:true,messages:msgs})})}
+  catch(e){if(opts.signal?.aborted)throw{code:'cancelled'};throw{code:'network'}}
+  if(!res.ok){let m='';try{m=(await res.json())?.error?.message||''}catch(e){}
+    throw{code:res.status===401||res.status===403?'auth_error':res.status===429?'rate_limited':res.status===529||res.status>=500?'upstream_error':'bad_request',message:m}}
+  const rd=res.body.getReader(),dec=new TextDecoder();let buf='',text='';
+  try{for(;;){const{done,value}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});let i;
+    while((i=buf.indexOf('\n'))>=0){const line=buf.slice(0,i).trim();buf=buf.slice(i+1);if(!line.startsWith('data:'))continue;
+      let ev;try{ev=JSON.parse(line.slice(5))}catch(e){continue}
+      if(ev.type==='content_block_delta'&&ev.delta?.type==='text_delta'){text+=ev.delta.text;opts.onText?.({text,delta:ev.delta.text})}
+      else if(ev.type==='error')throw{code:'upstream_error',message:ev.error?.message}}}}
+  catch(e){if(opts.signal?.aborted)throw{code:'cancelled',text};throw{code:e?.code||'network',text}}
+  if(!text.trim())throw{code:'empty_completion'};return{text,truncated:false}}
+function buildCtx(A,gr,label,p){
+  const opp=activeP().filter(o=>o!==p).map((o,i)=>`- ${o.name} (${posName(G.players.indexOf(o))}, 남은 스택 ${fmt(o.stack)}, 이번 스트리트 베팅 ${fmt(o.bet)}): 추정 범위 = ${A.ranges[i]?.desc||'?'}`).join('\n');
+  const opts=A.opts?A.opts.map(o=>`- ${o.label}: 기대값 ${o.ev>=0?'+':''}${(o.ev/BBA).toFixed(2)}BB${o.r?` (상대 폴드 확률 ${(o.r.fold*100).toFixed(0)}%, 콜 당했을 때 승률 ${(o.r.eqCalled*100).toFixed(0)}%)`:''}`).join('\n'):'(프리플랍 오픈 상황이라 오픈 범위표로 판단)';
+  return `[게임 설정] ${NPN()}인 노리밋 홀덤 캐시, 블라인드 500/1,000, 시작 스택 30,000(30BB).
+[결정 시점] ${['프리플랍','플랍','턴','리버'][G.street]}, 내 포지션 ${A.pos}
+[내 핸드] ${p.cards.map(cardTxt).join(' ')} (${A.key}, 프리플랍 강도 상위 ${Math.max(1,Math.round(A.pct*100))}%)${A.made?` / 현재 ${A.made.text}${A.made.draws.length?' + '+A.made.draws.join(', '):''}`:''}
+[보드] ${G.board.length?G.board.map(cardTxt).join(' '):'(없음)'}
+[팟] ${fmt(A.pot)} / 콜 금액 ${fmt(A.toCall)} / 내 남은 스택 ${fmt(p.stack)} (이번 스트리트 내 베팅 ${fmt(p.bet)})
+[지금까지 액션]
+${G.actLog.join('\n')}
+[남은 상대]
+${opp}
+[코치 엔진 계산]
+- 상대 추정 범위 대비 예상 승률 ${(A.eq*100).toFixed(1)}%${A.toCall>0?`, 콜에 필요한 승률 ${(A.need*100).toFixed(1)}%`:''}
+${opts}
+- 엔진 추천: ${A.bestOpt?A.bestOpt.label:ALABEL[A.best]}
+- 엔진 설명: ${A.reason}
+[사용자가 실제로 한 선택] ${label} → 채점 "${{good:'좋은 선택',ok:'무난',bad:'실수'}[gr.g]}"${gr.notes.length?`\n- 채점 메모: ${gr.notes.join(' / ')}`:''}`}
+const RULES=`너는 노리밋 홀덤 코치다. 사용자가 연습 앱에서 AI 상대들과 실제로 플레이하다가 방금 내린 결정에 대해 질문하거나 토론하려 한다. 아래에 그 결정 시점의 상황과, 앱의 코치 엔진이 계산한 수치가 있다.
+
+답변 규칙:
+- 한국어로, 말하듯 쉽게. 보통 3~6문장. 사용자가 더 자세히 원하면 길게.
+- 엔진 수치를 근거로 쓰되 그대로 믿지 말 것. 엔진은 근사 모델이다: 프리플랍 범위는 액션별 고정 비율, 포스트플랍에선 그 범위를 보드에 맞춰(트리플 이상/투페어/탑페어/약한 페어/드로우/노페어) 상대 액션별 가중치로 좁힌다. 헤즈업이면 콜·체크·레이즈 이후 턴/리버를 단순 정책(강한 패는 벳, 드로우·노페어는 가끔 블러프, 받는 쪽은 패 강도와 벳 크기로 콜/폴드)으로 시뮬레이션한다. 멀티웨이는 여전히 쇼다운까지 간다고 단순화하고, 프리플랍 오픈은 범위표로만 판단한다. 엔진 판단이 실전 이론과 어긋난다고 보면 솔직하게 말하고 이유를 설명하라.
+- 엔진이 틀렸다고 판단되면, 해설 아래 '이 해설이 이상해요'로 신고한 뒤 앱 위쪽 '설정 → 신고 목록'에서 공유해 앱을 만든 Claude 대화창에 붙여넣으면 엔진을 고칠 수 있다고 안내하라. 너 자신은 코드를 고칠 수 없다.
+- 존댓말(해요체)로 일관되게 말하라.
+- 사용자가 반박하면 무조건 동의하지 말고, 맞는 지적이면 인정하고 아니면 근거를 들어 반론하라.
+- 포지션, 스택 깊이(30BB 숏스택), 팟 오즈, 상대 범위, 블러프/폴드 에퀴티 같은 개념을 이 상황에 맞춰 설명하라.
+- 상대의 실제 카드는 아래에 '핸드 결과'로 공개된 경우에만 언급하라. 결과론(이번에 이겼다/졌다)으로 결정의 좋고 나쁨을 판단하지 말라.`;
+function chatPrompt(f){let ctx=f.ctx;if(G.result&&f.hand===G.hand)ctx+=`\n[핸드 결과 · 결정 이후에 공개된 정보]\n${G.result.title}\n${G.result.lines.join('\n')}\n보드 최종: ${G.board.map(cardTxt).join(' ')}`;
+  return[{role:'user',content:RULES+'\n\n'+ctx},...f.chat.filter(m=>m.content).map(m=>({role:m.role,content:m.content}))]}
+const QUICK=['왜 이게 추천이야?','내 선택은 왜 이렇게 채점됐어?','블러프했다면 어땠을까?','상대는 뭘 들고 있었을 것 같아?'];
+function focusedFb(){return G.handFb[G.focus||0]}
+function renderChat(){const box=$('chat');if(!box)return;const f=focusedFb();if(!f){box.innerHTML='';return}
+  if(sampleState==='off'){box.innerHTML=`<div class="chatoff">이 화면에서는 Claude에게 질문할 수 없습니다. claude.ai나 Claude 앱에서 열면 해설에 대해 바로 물어볼 수 있습니다.</div>${reportHTML(f)}`;bindReport(f);return}
+  const msgs=f.chat.map(m=>`<div class="msg ${m.role}">${m.role==='assistant'?'<span class="who">코치</span>':''}<div class="bub">${esc(m.content||(m.pending?'생각 중…':''))}</div>${m.err?`<div class="err">${esc(m.err)}</div>`:''}</div>`).join('');
+  box.innerHTML=`<div class="chathead">이 결정에 대해 물어보기</div>
+    ${f.chat.length?'':`<div class="quick">${QUICK.map(q=>`<button class="qbtn" data-q="${q}">${q}</button>`).join('')}</div>`}
+    <div class="msgs" id="msgs">${msgs}</div>
+    <form class="ask" id="askForm"><input id="askInput" placeholder="예: 여기서 콜하면 안 돼?" autocomplete="off" maxlength="500"><button class="btn sendbtn" id="sendBtn" type="submit">${chatBusy?'중지':'보내기'}</button></form>${reportHTML(f)}`;bindReport(f);
+  box.querySelectorAll('.qbtn').forEach(b=>b.onclick=()=>ask(b.dataset.q));
+  $('askForm').onsubmit=e=>{e.preventDefault();if(chatBusy){chatCtl?.abort();return}const v=$('askInput').value.trim();if(v)ask(v)};
+  const m=$('msgs');if(m)m.scrollTop=m.scrollHeight}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+const ERRS={no_key:'질문하려면 위쪽 \'설정\'에서 Anthropic API 키를 넣어 주세요.',auth_error:'API 키가 맞지 않습니다. 설정에서 키를 확인해 주세요.',network:'인터넷 연결을 확인해 주세요.',bad_request:'요청이 거절됐습니다. 설정에서 모델을 바꿔 보세요.',rate_limited:'요청이 너무 많거나 사용량 한도에 걸렸습니다. 잠시 뒤 다시 물어보세요.',session_expired:'로그인이 만료됐습니다. 다시 로그인해 주세요.',refused:'이 질문에는 답할 수 없습니다. 다르게 물어봐 주세요.',empty_completion:'답이 비어 있습니다. 질문을 바꿔 다시 물어보세요.',prompt_too_large:'대화가 너무 길어졌습니다. 다음 결정에서 새로 물어보세요.'};
+async function ask(q){const f=focusedFb();if(!f||chatBusy||!sampleFn)return;
+  f.chat.push({role:'user',content:q});const ans={role:'assistant',content:'',pending:true};f.chat.push(ans);
+  chatBusy=true;chatCtl=new AbortController();renderChat();
+  try{const input=chatPrompt({...f,chat:f.chat.slice(0,-1)});
+    const{text}=await sampleFn(input,{cache:false,signal:chatCtl.signal,onText:({text})=>{ans.content=text;ans.pending=false;const bs=document.querySelectorAll('#msgs .msg.assistant .bub');const b=bs[bs.length-1];if(b){b.textContent=text;$('msgs').scrollTop=$('msgs').scrollHeight}}});
+    ans.content=text;ans.pending=false}
+  catch(e){ans.pending=false;ans.content=e?.text||'';
+    if(e?.code==='not_granted'||e?.code==='sampling_disabled'||e?.code==='not_declared'||e?.code==='capability_disabled'||e?.code==='capability_removed'){sampleState='off'}
+    else if(e?.code!=='cancelled')ans.err=ERRS[e?.code]||'연결이 끊겼습니다. 다시 물어보세요.';
+    if(!ans.content&&!ans.err){f.chat.pop();f.chat.pop()}}
+  finally{chatBusy=false;renderChat();$('askInput')?.focus({preventScroll:true})}}
+
+/* ===== report a questionable explanation (read back by Claude to fix the engine) ===== */
+const ENGINE_VER='엔진 v2.1 · SB 헤즈업·오픈 올인 채점·멀티웨이 사이즈 수정';
+const REP_KEY='holdem-reports-v1';
+const loadReports=()=>{try{return JSON.parse(localStorage.getItem(REP_KEY))||[]}catch(e){return[]}};
+const dbRef={collection:()=>({add:async d=>{const a=loadReports();a.push(d);try{localStorage.setItem(REP_KEY,JSON.stringify(a))}catch(e){throw{code:'storage'}}renderSettings()}})};
+async function sendReport(f,note){
+  if(!dbRef)throw{code:'no_db'};
+  await dbRef.collection('reports').add({ts:Date.now(),engine:ENGINE_VER,hand:f.hand,street:f.street,choice:f.label,
+    verdict:f.gr.g,recommended:f.A.bestOpt?f.A.bestOpt.label:ALABEL[f.A.best],note:String(note).slice(0,1000),
+    context:f.ctx.slice(0,6000),chat:f.chat.filter(m=>m.content).slice(-6).map(m=>`${m.role==='user'?'나':'코치'}: ${m.content}`).join('\n').slice(0,4000),status:'new'})}
+function reportHTML(f){
+  if(!dbRef)return'';
+  if(f.reported)return`<div class="repdone">신고를 저장했습니다. 위쪽 '설정 → 신고 목록'에서 공유하거나 복사해 Claude에게 보내면 엔진을 고칠 수 있어요.</div>`;
+  return`<details class="rep" id="repBox"><summary>이 해설이 이상해요</summary><form id="repForm"><textarea id="repNote" rows="2" maxlength="1000" placeholder="어디가 이상한지 한 줄로 (예: 탑페어인데 폴드 추천)"></textarea><button class="btn sendbtn" type="submit">신고 저장</button><div class="err" id="repErr"></div></form></details>`}
+function bindReport(f){const fm=$('repForm');if(!fm)return;
+  fm.onsubmit=async e=>{e.preventDefault();const note=$('repNote').value.trim()||'(메모 없음)';fm.querySelector('button').disabled=true;
+    try{await sendReport(f,note);f.reported=true;renderChat()}catch(err){$('repErr').textContent='저장하지 못했습니다. 잠시 뒤 다시 시도해 주세요.';fm.querySelector('button').disabled=false}}}
+
+/* ===== keep the session across app updates ===== */
+const SAVE_KEY='holdem-live-session-v1';
+function snap(){if(!G.players.length)return null;return{np:G.players.length,players:G.players.map(p=>({stack:p.stack+(G.result?0:(p.total||0))})),hand:G.hand,button:G.button,rebuyLeft:G.rebuyLeft,invested:G.invested,stats:G.stats}}
+function saveSession(){const s=snap();if(!s)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(s))}catch(e){}}
+function loadSession(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY));if(s&&s.players&&s.players.length>=2&&s.players.length<=8)return s}catch(e){}return null}
+function resume(s){NP=s.players.length;initPlayers();s.players.forEach((x,i)=>G.players[i].stack=x.stack);G.hand=s.hand;G.button=s.button;G.rebuyLeft=s.rebuyLeft;G.invested=s.invested;G.stats=s.stats;
+  G.ticker='이전 세션을 이어서 합니다';G.result=null;
+  if(G.players[0].stack<=0){render();G.result={title:'칩이 없습니다',lines:[],heroDelta:0};renderResult();return}
+  next()}
+
+/* ===== table size ===== */
+{const sel=$('npSel');sel.innerHTML=[2,3,4,5,6,7,8].map(n=>`<option value="${n}">${n}명</option>`).join('');
+ sel.onchange=()=>{const n=+sel.value;try{localStorage.setItem('holdem-np',n)}catch(e){}
+   if(n===G.players.length){G.pendingNP=0;return}
+   G.pendingNP=n;
+   if(G.result&&!G.running){next()}else{G.ticker=`이번 핸드가 끝나면 <strong>${n}명</strong> 테이블로 새 세션을 시작합니다`;render()}}}
+function syncNP(){const sel=$('npSel');if(sel&&!G.pendingNP)sel.value=String(G.players.length||NP)}
+/* ===== settings ===== */
+function reportText(){const a=loadReports();if(!a.length)return'';
+  return `[홀덤 실전 코치 · 신고 ${a.length}건]\n\n`+a.map((r,i)=>`### 신고 ${i+1} · 핸드 #${r.hand} · ${r.street} · ${r.engine}\n내 선택: ${r.choice} → ${({good:'좋은 선택',ok:'무난',bad:'실수'})[r.verdict]||r.verdict} / 엔진 추천: ${r.recommended}\n메모: ${r.note}\n\n${r.context}\n${r.chat?`\n[코치와의 대화]\n${r.chat}\n`:''}`).join('\n---\n\n')}
+function renderSettings(){const a=loadReports();$('repCount').textContent=`${a.length}건`;
+  $('repList').innerHTML=a.slice(-5).reverse().map(r=>`<div>핸드 #${r.hand} · ${r.street} · ${esc(r.choice)} · ${esc(String(r.note).slice(0,40))}</div>`).join('');
+  ['repShare','repCopy','repClear'].forEach(id=>$(id).disabled=!a.length)}
+{$('modelSel').innerHTML=MODELS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');$('modelSel').value=LS.get('model',MODELS[0][0]);
+ $('keyIn').value=LS.get('apiKey');$('keyMsg').textContent=LS.get('apiKey')?'키가 저장돼 있습니다.':'키가 없으면 게임과 자동 해설만 쓸 수 있어요.';
+ $('setBtn').onclick=()=>{const el=$('settings');el.hidden=!el.hidden;$('setBtn').setAttribute('aria-expanded',String(!el.hidden));if(!el.hidden)renderSettings()};
+ $('keySave').onclick=()=>{LS.set('apiKey',$('keyIn').value.trim());$('keyMsg').textContent=$('keyIn').value.trim()?'저장했습니다.':'키를 지웠습니다.'};
+ $('modelSel').onchange=()=>LS.set('model',$('modelSel').value);
+ const copyText=t=>{if(window.Android?.copy){window.Android.copy(t);return}navigator.clipboard?.writeText(t).then(()=>{$('repMsg').textContent='복사했습니다.'},()=>{$('repMsg').textContent='복사하지 못했습니다.'})};
+ $('repShare').onclick=()=>{const t=reportText();if(!t)return;if(window.Android?.share)window.Android.share(t);else if(navigator.share)navigator.share({text:t}).catch(()=>{});else copyText(t)};
+ $('repCopy').onclick=()=>{const t=reportText();if(t)copyText(t)};
+ let armed=false;$('repClear').onclick=()=>{if(!armed){armed=true;$('repClear').textContent='한 번 더 누르면 삭제';setTimeout(()=>{armed=false;$('repClear').textContent='비우기'},3000);return}
+   armed=false;try{localStorage.removeItem(REP_KEY)}catch(e){}$('repClear').textContent='비우기';renderSettings()};
+ renderSettings()}
+/* ===== input ===== */
+$('bFold').onclick=()=>heroAct('fold');$('bCall').onclick=()=>heroAct('call');$('bRaise').onclick=()=>heroAct('raise');
+$('hintBtn').onclick=()=>{G.hintShown=true;renderCoach()};
+document.addEventListener('keydown',e=>{if(e.metaKey||e.ctrlKey||e.altKey||e.target.tagName==='INPUT')return;const k=e.key.toLowerCase();
+  if(G.heroWait){if(k==='f')heroAct('fold');else if(k==='c')heroAct('call');else if(k==='r'&&!$('bRaise').disabled)heroAct('raise');else if(k==='h'){G.hintShown=true;renderCoach()}}
+  else if(k==='enter'&&G.result){const b=$('nextBtn')||$('rebuyBtn')||$('restartBtn');if(b){e.preventDefault();b.click()}}});
+
+window.claude?.hot?.snapshot?.(()=>snap());
+function boot(data){const s=(data&&data.players?data:null)||loadSession();if(s)resume(s);else startSession()}
+try{if(window.claude?.hot?.ready)window.claude.hot.ready(boot);else boot(window.claude?.hot?.data??{})}catch(e){boot({})}
+</script>
+</body></html>
