@@ -63,7 +63,7 @@ R('신고했습니다. Claude 대화창에서 "신고한 해설 확인해줘"라
   "신고를 저장했습니다. 위쪽 '설정 → 신고 목록'에서 공유하거나 복사해 Claude에게 보내면 엔진을 고칠 수 있어요.")
 
 # ---- settings panel ----
-R("  <div class=\"meta\" id=\"meta\"></div>",
+R("  <nav class=",
   """  <div class="setrow"><button class="link" id="setBtn" aria-expanded="false" aria-controls="settings">설정 · 신고 목록</button></div>
   <section class="settings" id="settings" hidden>
     <div class="sgroup">
@@ -80,7 +80,7 @@ R("  <div class=\"meta\" id=\"meta\"></div>",
       <div id="repList" class="replist"></div>
     </div>
   </section>
-  <div class="meta" id="meta"></div>""")
+  <nav class=""")
 R("footer{font-size:11px;color:var(--muted)}", """footer{font-size:11px;color:var(--muted)}
 .setrow{display:flex;justify-content:flex-end;margin-top:-6px}
 .settings{border-radius:14px;padding:14px;background:var(--panel);border:1px solid var(--line);display:flex;flex-direction:column;gap:16px}
