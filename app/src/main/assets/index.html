@@ -904,12 +904,12 @@ function resume(s){NP=s.np||s.players.length;initPlayers();
 function syncNP(){const sel=$('npSel');if(sel&&!G.pendingNP)sel.value=String(NP)}
 /* ===== heads-up ladder: opponents that read you ===== */
 const HU_LEVELS=[
- {name:'낚시꾼',sty:'콜링 스테이션',loose:1.6,aggr:.4,station:1,bluff:.03,read:0,desc:'뭐든 콜하고 거의 블러프하지 않습니다. 당신을 읽지 않아요.',tip:'블러프는 통하지 않습니다. 좋은 패로 크게 밸류 벳하세요.'},
- {name:'바위',sty:'초타이트',loose:.55,aggr:.6,station:0,bluff:.08,read:.35,desc:'좋은 패만 칩니다. 당신이 블라인드를 너무 자주 훔치거나 쉽게 접으면 눈치채기 시작해요.',tip:'자주 레이즈해서 블라인드를 훔치세요. 바위가 크게 나오면 믿으세요.'},
- {name:'불도저',sty:'루즈·공격',loose:1.5,aggr:1.5,station:0,bluff:.3,read:.55,desc:'넓게 들어오고 자주 벳합니다. 당신이 벳에 자주 접으면 더 세게 밀어붙여요.',tip:'중간 패로도 콜해서 블러프를 잡으세요. 너무 자주 폴드하면 계속 털립니다.'},
- {name:'덫사냥꾼',sty:'슬로플레이·체크레이즈',loose:1,aggr:1,station:0,bluff:.15,trap:.6,xr:.12,read:.7,desc:'강한 패로 체크하고 기다렸다가 체크레이즈합니다. 당신이 체크를 받으면 무조건 벳하는지 지켜봐요.',tip:'상대의 체크가 곧 약함은 아닙니다. 체크레이즈를 맞으면 다시 생각하세요.'},
- {name:'광인',sty:'오버벳·올인',loose:1.8,aggr:1.8,station:0,bluff:.4,over:1,shove:.12,read:.75,desc:'팟보다 큰 벳과 프리플랍 올인을 수시로 던집니다. 당신이 큰 벳에 접는지 지켜봐요.',tip:'큰 벳이 곧 강한 패는 아닙니다. 팟 오즈를 계산하고, 좋은 패로 함정을 파세요.'},
- {name:'카멜레온',sty:'보스 · 스타일 전환',boss:1,read:1,loose:1,aggr:1,station:0,bluff:.2,desc:'8핸드마다 스타일을 바꾸고, 지금까지 헤즈업에서 본 당신의 습관을 모두 기억합니다.',tip:'습관을 바꾸세요. 상대가 읽은 당신과 반대로 움직일 때 이깁니다.'}];
+ {name:'크리스 머니메이커',sty:'아마추어 신화 · 콜 위주',loose:1.6,aggr:.4,station:1,bluff:.03,read:0,desc:'2003년 온라인 예선에서 올라와 WSOP 메인 이벤트를 우승한 아마추어. 여기선 넓게 따라오고 거의 블러프하지 않는 스타일입니다. 당신을 읽지 않아요.',tip:'블러프는 잘 안 통합니다. 좋은 패로 크게 밸류 벳하세요.'},
+ {name:'필 헬무스',sty:'포커 브랫 · 초타이트',loose:.55,aggr:.6,station:0,bluff:.08,read:.35,desc:'WSOP 브레이슬릿 최다 기록 보유자, 별명은 "포커 브랫". 좋은 패만 칩니다. 당신이 블라인드를 너무 자주 훔치거나 쉽게 접으면 눈치채기 시작해요.',tip:'자주 레이즈해서 블라인드를 훔치세요. 헬무스가 크게 나오면 믿으세요.'},
+ {name:'거스 핸슨',sty:'그레이트 데인 · 루즈·공격',loose:1.5,aggr:1.5,station:0,bluff:.3,read:.55,desc:'별명 "그레이트 데인". 아무 두 장으로도 들어와 밀어붙이는 공격적인 스타일로 유명합니다. 당신이 벳에 자주 접으면 더 세게 밀어붙여요.',tip:'중간 패로도 콜해서 블러프를 잡으세요. 너무 자주 폴드하면 계속 털립니다.'},
+ {name:'조니 챈',sty:'오리엔트 익스프레스 · 슬로플레이',loose:1,aggr:1,station:0,bluff:.15,trap:.6,xr:.12,read:.7,desc:'별명 "오리엔트 익스프레스". 1988년 WSOP 메인 이벤트 마지막 핸드에서 넛 스트레이트를 숨기고 기다린 슬로플레이로 유명합니다. 강한 패로 체크했다가 체크레이즈해요.',tip:'상대의 체크가 곧 약함은 아닙니다. 체크레이즈를 맞으면 다시 생각하세요.'},
+ {name:'톰 드완',sty:'durrrr · 오버벳·블러프',loose:1.8,aggr:1.8,station:0,bluff:.4,over:1,shove:.12,read:.75,desc:'온라인 닉네임 "durrrr". 하이스테이크에서 거대한 오버벳과 과감한 블러프로 이름을 알렸습니다. 당신이 큰 벳에 접는지 지켜봐요.',tip:'큰 벳이 곧 강한 패는 아닙니다. 팟 오즈를 계산하고, 좋은 패로 함정을 파세요.'},
+ {name:'필 아이비',sty:'보스 · 상대를 읽는 천재',boss:1,read:1,loose:1,aggr:1,station:0,bluff:.2,desc:'"포커계의 타이거 우즈". 상대를 읽는 능력으로 유명합니다. 8핸드마다 스타일을 바꾸고, 지금까지 헤즈업에서 본 당신의 습관을 모두 기억합니다.',tip:'습관을 바꾸세요. 상대가 읽은 당신과 반대로 움직일 때 이깁니다.'}];
 const HU_BLINDS=[[500,1000],[1000,2000],[1500,3000],[2000,4000],[3000,6000],[5000,10000]];
 const HU_STACK=50000,HU_LEVEL_HANDS=10,HU_KEY='holdem-hu-v1',READ_KEY='holdem-read-v1';
 const huProg=()=>{try{return JSON.parse(localStorage.getItem(HU_KEY))||{}}catch(e){return{}}};
@@ -980,7 +980,8 @@ function huMap(){const p=huProg();const tot=HU_LEVELS.reduce((s,_,i)=>s+(p[i]||0
    <p class="ctx">1:1로 붙어 상대 칩을 모두 따면 클리어. 둘 다 ${fmt(HU_STACK)}칩으로 시작하고, ${HU_LEVEL_HANDS}핸드마다 블라인드가 오릅니다. 리바인은 없어요. 단계가 오를수록 상대가 변칙적으로 치고, 당신의 습관을 더 빨리 읽고 공략합니다. 이기면 판단 점수로 별을 받습니다(85점 ★3 · 70점 ★2 · 그 아래 ★1).</p>
    <div class="hugrid">${HU_LEVELS.map((lv,i)=>{const open=i===0||(p[i-1]||0)>=1,got=p[i]||0;
      return `<button class="hucard ${lv.boss?'boss':''}" data-i="${i}" ${open?'':'disabled'}><span class="snum">${i+1}</span><span class="stitle">${lv.name} <span class="stag">${lv.sty}</span></span><span class="hudesc">${open?lv.desc:'이전 단계를 깨면 열립니다.'}</span><span class="hufoot"><span class="readbar" title="읽는 능력"><i style="width:${lv.read*100}%"></i></span><span class="sstars ${got?'got':''}">${open?STAR(got):'잠김'}</span></span></button>`}).join('')}</div>
-   ${(()=>{const L=lifeRead();return L.hands?`<p class="ctx">지금까지 헤즈업 ${L.hands}핸드. 카멜레온은 이 기록을 모두 알고 시작합니다.</p>`:''})()}</div>`;
+   ${(()=>{const L=lifeRead();return L.hands?`<p class="ctx">지금까지 헤즈업 ${L.hands}핸드. 필 아이비는 이 기록을 모두 알고 시작합니다.</p>`:''})()}
+   <p class="ctx">실제 선수들의 별명과 알려진 스타일을 모티브로 한 AI 캐릭터입니다. 실제 선수의 플레이와는 다릅니다.</p></div>`;
   $('huMap').querySelectorAll('.hucard').forEach(b=>b.onclick=()=>huIntro(+b.dataset.i))}
 function huIntro(i){const lv=HU_LEVELS[i];
   $('huMap').innerHTML=`<div class="sstage"><div class="sbar"><button class="link" id="huBack">← 단계 목록</button></div>
@@ -995,7 +996,7 @@ function renderHUResult(){const r=G.result,hero=G.players[0],bot=G.players[1];co
   let body='',btns='';
   if(won||lost){const s=G.stats,score=s.dec?Math.round((s.good+s.ok*.5)/s.dec*100):0;const st=won?(score>=85?3:score>=70?2:1):0;
     if(st){const p=huProg();if(st>(p[G.hu.i]||0)){p[G.hu.i]=st;try{localStorage.setItem(HU_KEY,JSON.stringify(p))}catch(e){}}}
-    body=`<p><strong>${won?`${G.hu.lv.name}을(를) 이겼습니다! ${STAR(st)}`:`${G.hu.lv.name}에게 졌습니다.`}</strong> ${G.hu.hands}핸드 · 판단 점수 ${score}점 (좋음 ${s.good} · 무난 ${s.ok} · 실수 ${s.bad})</p>
+    body=`<p><strong>${won?`${G.hu.lv.name} 상대로 승리! ${STAR(st)}`:`${G.hu.lv.name}에게 졌습니다.`}</strong> ${G.hu.hands}핸드 · 판단 점수 ${score}점 (좋음 ${s.good} · 무난 ${s.ok} · 실수 ${s.bad})</p>
      <div class="ctx">상대가 마지막에 읽은 당신</div><ul>${readNotes().map(n=>`<li>${n}</li>`).join('')}</ul>`;
     const nextOpen=won&&G.hu.i<HU_LEVELS.length-1;
     btns=`<div class="sopts"><button class="btn" id="huRetry">다시 도전</button>${nextOpen?`<button class="btn prim" id="huNext">다음 단계<small>Enter</small></button>`:''}<button class="btn" id="huList">단계 목록</button></div>`}
