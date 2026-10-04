@@ -113,7 +113,7 @@ footer{font-size:11px;color:var(--muted)}
 .repbtns{display:flex;gap:6px;flex-wrap:wrap}
 .replist{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
 .replist div{border-top:1px solid var(--line);padding-top:4px}
-.modes{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:rgba(0,0,0,.25);padding:4px;border-radius:12px}
+.modes{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;background:rgba(0,0,0,.25);padding:4px;border-radius:12px}
 .mode{appearance:none;border:0;background:transparent;color:var(--muted);font:inherit;font-weight:700;font-size:15px;padding:10px 4px;border-radius:9px;cursor:pointer}
 .mode[aria-selected="true"]{background:var(--brass);color:var(--brass-ink)}
 .mode:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
@@ -146,6 +146,24 @@ footer{font-size:11px;color:var(--muted)}
 .sopt.bestopt{border-color:var(--good)}
 .sopt:disabled{opacity:1;cursor:default}
 .result a{color:var(--brass)}
+#huMap{display:flex;flex-direction:column;gap:12px}
+#huMap[hidden]{display:none}
+.hugrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px}
+.hucard{appearance:none;font:inherit;color:var(--ink);text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;cursor:pointer;min-width:0}
+.hucard:disabled{opacity:.45;cursor:default}
+.hucard.boss{border-color:var(--brass)}
+.hucard:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.hucard .snum{grid-row:span 3}
+.hudesc{font-size:12px;color:var(--muted)}
+.hufoot{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.readbar{display:inline-block;width:70px;height:6px;border-radius:3px;background:rgba(0,0,0,.35);overflow:hidden;vertical-align:middle}
+.readbar i{display:block;height:100%;background:var(--bad)}
+.hubanner{border-radius:14px;padding:10px 12px;background:var(--panel);border:1px solid var(--brass);display:flex;flex-direction:column;gap:4px}
+.hubanner[hidden]{display:none}
+.hutop{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline}
+.notes summary{font-size:13px;color:var(--brass);cursor:pointer}
+.notes ul,.result ul{margin:4px 0 0;padding-left:18px;font-size:13px}
+.hubanner .link{align-self:flex-start}
 .chat{display:flex;flex-direction:column;gap:8px;border-radius:14px;padding:12px;background:var(--panel);border:1px solid var(--line)}
 .chathead{font-size:12px;letter-spacing:.08em;color:var(--muted)}
 .quick{display:flex;gap:6px;flex-wrap:wrap}
@@ -197,9 +215,11 @@ footer{font-size:11px;color:var(--muted)}
       <div id="repList" class="replist"></div>
     </div>
   </section>
-  <nav class="modes" role="tablist"><button class="mode" role="tab" data-m="live" aria-selected="true">실전</button><button class="mode" role="tab" data-m="story" aria-selected="false">스토리</button></nav>
+  <nav class="modes" role="tablist"><button class="mode" role="tab" data-m="live" aria-selected="true">실전</button><button class="mode" role="tab" data-m="hu" aria-selected="false">헤즈업</button><button class="mode" role="tab" data-m="story" aria-selected="false">스토리</button></nav>
   <section id="storyMode" hidden></section>
+  <section id="huMap" hidden></section>
   <div id="liveMode">
+  <div id="huBanner" class="hubanner" hidden></div>
   <div class="meta" id="meta"></div>
 
   <section class="felt">
@@ -232,7 +252,7 @@ footer{font-size:11px;color:var(--muted)}
 
 <script>
 /* ===== constants ===== */
-const SBA=500,BBA=1000,BUYIN=30000,REBUY_TOTAL=150000,REBUY_UNIT=30000,DELAY=650;
+let SBA=500,BBA=1000;const BUYIN=30000,REBUY_TOTAL=150000,REBUY_UNIT=30000,DELAY=650;
 const RANKS='23456789TJQKA';
 const SYM=['♠','♥','♦','♣'];
 const CAT=['하이카드','원페어','투페어','트리플','스트레이트','플러시','풀하우스','포카드','스트레이트 플러시'];
@@ -532,9 +552,11 @@ function grade(A,act,p){
 
 /* ===== bots ===== */
 function botDecide(p){
+  const z=huAdjust(p);
   const st=p,toCall=G.currentBet-p.bet,pot=potTotal(),maxTo=p.bet+p.stack,r=Math.random(),idx=G.players.indexOf(p),pos=posName(idx);
   const raiseTo=to=>{to=Math.round(to/SBA)*SBA;to=Math.max(to,G.currentBet+G.minRaise);if(to>=maxTo*.7)to=maxTo;to=Math.min(to,maxTo);if(to<=G.currentBet)return toCall>0?{t:'call'}:{t:'check'};return{t:'raise',to}};
   if(G.street===0){const pct=handPct(p.cards);
+    if(st.shove&&r<st.shove&&pct<.6&&p.stack<=40*BBA)return raiseTo(maxTo);
     if(G.numRaises===0){
       if(pos==='BB'&&toCall===0)return pct<.12*st.loose?raiseTo(G.currentBet+3*BBA):{t:'check'};
       const open=(RFIBP[behindOf(idx)]||.2)*st.loose;const limpers=G.players.filter(o=>o.limped&&!o.folded).length;
@@ -544,19 +566,24 @@ function botDecide(p){
       return toCall>0?{t:'fold'}:{t:'check'}}
     const lvl=G.numRaises,base=lvl===1?.22:lvl===2?.08:.04;const odds=toCall/(pot+toCall);
     const priceAdj=1+Math.max(0,.33-odds)*2.2;const allInCall=toCall>=p.stack;
-    const callPct=base*st.loose*priceAdj*(st.station?1.5:1)*(allInCall?.6:1),raisePct=base*.35*st.aggr;
+    const callPct=base*st.loose*priceAdj*(st.station?1.5:1)*(allInCall?.6:1),raisePct=base*.35*st.aggr+(lvl===1?z.threeBet:0);
     if(pct<=raisePct&&!allInCall){let to=G.currentBet*3;if(lvl>=2||to>=maxTo*.45)to=maxTo;return raiseTo(to)}
     if(pct<=callPct)return{t:'call'};
     return{t:'fold'}}
   const opps=activeP().filter(o=>o!==p);
-  const eq=equity(p.cards,G.board,opps.map(o=>{const m=oppModel(o);return{...m,pct:Math.min(1,m.pct*1.3)}}),350);
+  const eq=equity(p.cards,G.board,opps.map(o=>{const m=oppModel(o);return{...m,pct:Math.min(1,m.pct*1.3*(o.hero?z.heroWide:1))}}),350);
+  const size=()=>st.over?(1+Math.random()*.8):(.5+Math.random()*.25);
   if(toCall===0){
-    if(eq>.62&&r<.85*Math.min(1,st.aggr))return raiseTo(pot*(.5+Math.random()*.25));
-    if(eq<.3&&opps.length===1&&r<.2*st.aggr)return raiseTo(pot*.5);
+    if(st.trap&&eq>.75&&r<st.trap){p.trapNow=true;return{t:'check'}}
+    if(eq>.62-z.thin&&r<.85*Math.min(1,st.aggr))return raiseTo(pot*size());
+    const bp=clamp((st.bluff??.2*st.aggr)+z.bluff,0,.75);
+    if(eq<.35&&opps.length===1&&Math.random()<bp)return raiseTo(pot*size());
     return{t:'check'}}
-  const need=toCall/(pot+toCall);
-  if(eq>.75&&r<.5*st.aggr&&maxTo>G.currentBet)return raiseTo(G.currentBet*2.5);
-  if(eq+(st.station?.08:0)>=need||r<.03)return{t:'call'};
+  const need=toCall/(pot+toCall),frac=toCall/Math.max(1,pot-toCall);
+  if((p.trapNow||eq>.75)&&r<(p.trapNow?.85:.5*st.aggr)&&maxTo>G.currentBet){p.trapNow=false;return raiseTo(G.currentBet*(st.over?3.5:2.8))}
+  if(st.xr&&eq<.35&&G.street<3&&opps.length===1&&Math.random()<st.xr*(1+Math.max(0,z.bluff)*2)&&maxTo>G.currentBet)return raiseTo(G.currentBet*2.8);
+  const adj=(st.station?.08:0)+(G.street===3?z.callAdj:0)+(frac>=.9?(z.bigAdj||0):0);
+  if(eq+adj>=need||r<.03)return{t:'call'};
   return{t:'fold'}}
 
 /* ===== engine ===== */
@@ -577,7 +604,7 @@ function applyAction(p,a){
   G.actLog.push(`${['프리플랍','플랍','턴','리버'][G.street]}: ${p.hero?'나':p.name}(${posName(idx)}) ${p.act}`);
   G.ticker=`<strong>${p.name}</strong> ${p.act}`}
 
-async function bettingRound(start){
+async function bettingRound(start,ep){
   let i=start,guard=0;
   while(guard++<300){
     if(activeP().length===1)return;
@@ -590,31 +617,34 @@ async function bettingRound(start){
       G.acting=i;render();
       let a;
       if(p.hero)a=await heroTurn(p);
-      else{await sleep(DELAY);a=botDecide(p)}
+      else{await sleep(DELAY);if(ep!==G.epoch)throw'abort';a=botDecide(p)}
+      if(ep!==G.epoch)throw'abort';
       applyAction(p,a);G.acting=-1;render()}
     i=(i+1)%NPN()}}
 
 function newDeck(){const d=[...Array(52).keys()];for(let i=51;i>0;i--){const j=Math.random()*(i+1)|0;[d[i],d[j]]=[d[j],d[i]]}return d}
 
-async function playHand(){
+async function playHand(ep){
   G.hand++;G.stats.hands++;G.showdown=false;G.winners=new Set();G.handFb=[];G.focus=0;G.result=null;G.actLog=[];$('resultBox').innerHTML='';
   for(let j=G.players.length-1;j>=1;j--)if(G.players[j].eliminated){G.players.splice(j,1);const N=G.players.length;
     if(j<G.button)G.button--;else if(j===G.button)G.button=(j-1+N)%N}
   if(G.button>=G.players.length)G.button=0;
+  huBlindStep();
   G.button=(G.button+1)%NPN();G.deck=newDeck();G.board=[];G.street=0;G.currentBet=0;G.minRaise=BBA;G.numRaises=0;
-  G.players.forEach(p=>Object.assign(p,{cards:[G.deck.pop(),G.deck.pop()],folded:false,allIn:false,bet:0,total:0,acted:false,act:'',preLevel:0,calledLevel:0,limped:false,preShove:false,prePos:'',preBehind:0,aggPost:false,postCalled:false}));
+  G.players.forEach(p=>Object.assign(p,{cards:[G.deck.pop(),G.deck.pop()],folded:false,allIn:false,bet:0,total:0,acted:false,act:'',preLevel:0,calledLevel:0,limped:false,preShove:false,prePos:'',preBehind:0,aggPost:false,postCalled:false,trapNow:false}));
   const sbI=sbIdx(),bbI=bbIdx();put(G.players[sbI],SBA);put(G.players[bbI],BBA);
   G.players[sbI].act='SB '+fmt(G.players[sbI].bet);G.players[bbI].act='BB '+fmt(G.players[bbI].bet);
   G.currentBet=BBA;G.actLog.push(`블라인드: ${G.players[sbI].hero?'나':G.players[sbI].name}(SB) ${fmt(G.players[sbI].bet)}, ${G.players[bbI].hero?'나':G.players[bbI].name}(BB) ${fmt(G.players[bbI].bet)}`);
   G.ticker=`핸드 #${G.hand} · ${G.players.length}명 · 버튼 <strong>${G.players[G.button].name}</strong>`;
-  renderCoach();render();await sleep(400);
+  renderCoach();render();await sleep(400);if(ep!==G.epoch)throw'abort';
   for(let s=0;s<4;s++){
     if(s>0){G.players.forEach(p=>{p.bet=0;p.acted=false;if(!p.folded&&!p.allIn)p.act=''});G.currentBet=0;G.minRaise=BBA;G.numRaises=0;G.street=s;
       if(s===1)G.board.push(G.deck.pop(),G.deck.pop(),G.deck.pop());else G.board.push(G.deck.pop());
       G.actLog.push(`--- ${['','플랍','턴','리버'][s]}: ${G.board.map(c=>rl(cr(c))+SYM[cs(c)]).join(' ')}`);
-      G.ticker=['','플랍','턴','리버'][s];render();await sleep(500)}
-    if(activeP().length>1)await bettingRound(s===0?(bbI+1)%NPN():(G.button+1)%NPN());
+      G.ticker=['','플랍','턴','리버'][s];render();await sleep(500);if(ep!==G.epoch)throw'abort'}
+    if(activeP().length>1)await bettingRound(s===0?(bbI+1)%NPN():(G.button+1)%NPN(),ep);
     if(activeP().length===1)break}
+  if(ep!==G.epoch)throw'abort';
   finishHand()}
 
 function finishHand(){setTimeout(saveSession,0);
@@ -636,7 +666,7 @@ function finishHand(){setTimeout(saveSession,0);
     if(p.rebuyLeft>0){const a=Math.min(REBUY_UNIT,p.rebuyLeft);p.rebuyLeft-=a;p.stack+=a;res.lines.push(`${p.name} 리바인 +${fmt(a)} (남은 한도 ${fmt(p.rebuyLeft)})`)}
     else{p.eliminated=true;res.lines.push(`${p.name} 탈락 · 리바인 한도를 다 썼습니다`)}});
   const hero=G.players.find(p=>p.hero);res.heroDelta=hero.stack-before;G.result=res;G.acting=-1;
-  G.ticker=res.title;render();renderResult()}
+  huLearnShowdown();G.ticker=res.title;render();renderResult()}
 
 /* ===== hero turn ===== */
 let sel={to:0,preset:''};
@@ -677,12 +707,13 @@ function heroAct(t){const w=G.heroWait;if(!w)return;const p=w.p;
   G.stats.dec++;G.stats[gr.g]++;
   const label=act.t==='raise'?(gr.a==='bet'?'벳 ':'레이즈 ')+fmt(act.to):ALABEL[act.t];
   G.handFb.unshift({A:G.advice,gr,label,street:['프리플랍','플랍','턴','리버'][G.street],chat:[],hand:G.hand,ctx:buildCtx(G.advice,gr,label,p)});G.focus=0;
+  huLearnAction(p,act);
   G.heroWait=null;lockControls('상대 차례…');renderCoach();w.resolve(act)}
 
 /* ===== render ===== */
 function cardHTML(c,cls=''){return `<div class="card s-${cs(c)} ${cls}" aria-label="${rl(cr(c))}${SYM[cs(c)]}"><span class="r">${rl(cr(c))}</span><span class="s">${SYM[cs(c)]}</span></div>`}
 const backHTML=cls=>`<div class="card back ${cls}"></div>`;
-function render(){syncNP();
+function render(){syncNP();if(G.hu)renderHUBanner();
   const hero=G.players[0];
   const net=hero.stack+(G.result?0:hero.total)-G.invested;
   $('meta').innerHTML=`<div>핸드<b>#${G.hand}</b></div><div>내 스택<b>${fmt(hero.stack)}</b></div><div>손익<b class="${net>0?'pos':net<0?'neg':''}">${net>0?'+':''}${fmt(net)}</b></div><div>리바인 잔여<b>${fmt(G.rebuyLeft)}</b></div>`;
@@ -729,6 +760,7 @@ function renderCoach(){
   c.innerHTML=h;c.querySelectorAll('.histbtn').forEach(b=>b.onclick=()=>{if(chatBusy)return;G.focus=+b.dataset.i;renderCoach()});renderChat()}
 
 function renderResult(){
+  if(G.hu)return renderHUResult();
   const r=G.result,hero=G.players[0];
   const busted=hero.stack<=0;let btns='';
   const allOut=G.players.every(p=>p.hero||p.eliminated);
@@ -750,7 +782,7 @@ function renderResult(){
   if(sb)sb.onclick=()=>{try{localStorage.removeItem(SAVE_KEY)}catch(e){}startSession()};
   (nb||rb||sb).focus({preventScroll:true})}
 
-function next(){if(G.running)return;if(G.pendingNP){NP=G.pendingNP;G.pendingNP=0;try{localStorage.removeItem(SAVE_KEY)}catch(e){}startSession();return}G.running=true;G.result=null;lockControls('딜 중…');playHand().finally(()=>{G.running=false})}
+function next(){if(G.running)return;if(G.pendingNP){NP=G.pendingNP;G.pendingNP=0;try{localStorage.removeItem(SAVE_KEY)}catch(e){}startSession();return}G.running=true;G.result=null;lockControls('딜 중…');const ep=G.epoch=(G.epoch||0);playHand(ep).catch(e=>{if(e!=='abort')console.error(e)}).finally(()=>{if(ep===G.epoch)G.running=false})}
 function startSession(){G.pendingNP=0;initPlayers();G.hand=0;G.rebuyLeft=REBUY_TOTAL;G.invested=BUYIN;G.stats={hands:0,dec:0,good:0,ok:0,bad:0};G.result=null;next()}
 
 /* ===== discussion with Claude ===== */
@@ -780,7 +812,7 @@ async function sampleFn(input,opts={}){
 function buildCtx(A,gr,label,p){
   const opp=activeP().filter(o=>o!==p).map((o,i)=>`- ${o.name} (${posName(G.players.indexOf(o))}, 남은 스택 ${fmt(o.stack)}, 이번 스트리트 베팅 ${fmt(o.bet)}): 추정 범위 = ${A.ranges[i]?.desc||'?'}`).join('\n');
   const opts=A.opts?A.opts.map(o=>`- ${o.label}: 기대값 ${o.ev>=0?'+':''}${(o.ev/BBA).toFixed(2)}BB${o.r?` (상대 폴드 확률 ${(o.r.fold*100).toFixed(0)}%, 콜 당했을 때 승률 ${(o.r.eqCalled*100).toFixed(0)}%)`:''}`).join('\n'):'(프리플랍 오픈 상황이라 오픈 범위표로 판단)';
-  return `[게임 설정] ${NPN()}인 노리밋 홀덤 캐시, 블라인드 500/1,000, 시작 스택 30,000(30BB).
+  return `[게임 설정] ${G.hu?`헤즈업 도전 ${G.hu.i+1}단계, 상대 ${G.hu.lv.name}(${G.hu.lv.sty}): ${G.hu.lv.desc} 블라인드 ${fmt(SBA)}/${fmt(BBA)}, 시작 스택 ${fmt(HU_STACK)}.`:`${NPN()}인 노리밋 홀덤 캐시, 블라인드 500/1,000, 시작 스택 30,000(30BB).`}
 [결정 시점] ${['프리플랍','플랍','턴','리버'][G.street]}, 내 포지션 ${A.pos}
 [내 핸드] ${p.cards.map(cardTxt).join(' ')} (${A.key}, 프리플랍 강도 상위 ${Math.max(1,Math.round(A.pct*100))}%)${A.made?` / 현재 ${A.made.text}${A.made.draws.length?' + '+A.made.draws.join(', '):''}`:''}
 [보드] ${G.board.length?G.board.map(cardTxt).join(' '):'(없음)'}
@@ -854,7 +886,7 @@ function bindReport(f){const fm=$('repForm');if(!fm)return;
 /* ===== keep the session across app updates ===== */
 const SAVE_KEY='holdem-live-session-v1';
 function snap(){if(!G.players.length)return null;return{np:G.players.length,players:G.players.map(p=>({name:p.name,rebuyLeft:p.rebuyLeft,eliminated:!!p.eliminated,stack:p.stack+(G.result?0:(p.total||0))})),hand:G.hand,button:G.button,rebuyLeft:G.rebuyLeft,invested:G.invested,stats:G.stats}}
-function saveSession(){const s=snap();if(!s)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(s))}catch(e){}}
+function saveSession(){if(G.away)return;const s=snap();if(!s)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(s))}catch(e){}}
 function loadSession(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY));if(s&&s.players&&s.players.length>=1&&s.players.length<=8)return s}catch(e){}return null}
 function resume(s){NP=s.np||s.players.length;initPlayers();
   if(s.players.every(x=>x.name)){G.players=s.players.map((x,i)=>i===0?{name:'나',hero:true,stack:x.stack}:{...(BOTS.find(b=>b.name===x.name)||BOTS[0]),hero:false,stack:x.stack,rebuyLeft:x.rebuyLeft??REBUY_TOTAL,eliminated:!!x.eliminated})}
@@ -870,6 +902,113 @@ function resume(s){NP=s.np||s.players.length;initPlayers();
    G.pendingNP=n;
    if(G.result&&!G.running){next()}else{G.ticker=`이번 핸드가 끝나면 <strong>${n}명</strong> 테이블로 새 세션을 시작합니다`;render()}}}
 function syncNP(){const sel=$('npSel');if(sel&&!G.pendingNP)sel.value=String(NP)}
+/* ===== heads-up ladder: opponents that read you ===== */
+const HU_LEVELS=[
+ {name:'낚시꾼',sty:'콜링 스테이션',loose:1.6,aggr:.4,station:1,bluff:.03,read:0,desc:'뭐든 콜하고 거의 블러프하지 않습니다. 당신을 읽지 않아요.',tip:'블러프는 통하지 않습니다. 좋은 패로 크게 밸류 벳하세요.'},
+ {name:'바위',sty:'초타이트',loose:.55,aggr:.6,station:0,bluff:.08,read:.35,desc:'좋은 패만 칩니다. 당신이 블라인드를 너무 자주 훔치거나 쉽게 접으면 눈치채기 시작해요.',tip:'자주 레이즈해서 블라인드를 훔치세요. 바위가 크게 나오면 믿으세요.'},
+ {name:'불도저',sty:'루즈·공격',loose:1.5,aggr:1.5,station:0,bluff:.3,read:.55,desc:'넓게 들어오고 자주 벳합니다. 당신이 벳에 자주 접으면 더 세게 밀어붙여요.',tip:'중간 패로도 콜해서 블러프를 잡으세요. 너무 자주 폴드하면 계속 털립니다.'},
+ {name:'덫사냥꾼',sty:'슬로플레이·체크레이즈',loose:1,aggr:1,station:0,bluff:.15,trap:.6,xr:.12,read:.7,desc:'강한 패로 체크하고 기다렸다가 체크레이즈합니다. 당신이 체크를 받으면 무조건 벳하는지 지켜봐요.',tip:'상대의 체크가 곧 약함은 아닙니다. 체크레이즈를 맞으면 다시 생각하세요.'},
+ {name:'광인',sty:'오버벳·올인',loose:1.8,aggr:1.8,station:0,bluff:.4,over:1,shove:.12,read:.75,desc:'팟보다 큰 벳과 프리플랍 올인을 수시로 던집니다. 당신이 큰 벳에 접는지 지켜봐요.',tip:'큰 벳이 곧 강한 패는 아닙니다. 팟 오즈를 계산하고, 좋은 패로 함정을 파세요.'},
+ {name:'카멜레온',sty:'보스 · 스타일 전환',boss:1,read:1,loose:1,aggr:1,station:0,bluff:.2,desc:'8핸드마다 스타일을 바꾸고, 지금까지 헤즈업에서 본 당신의 습관을 모두 기억합니다.',tip:'습관을 바꾸세요. 상대가 읽은 당신과 반대로 움직일 때 이깁니다.'}];
+const HU_BLINDS=[[500,1000],[1000,2000],[1500,3000],[2000,4000],[3000,6000],[5000,10000]];
+const HU_STACK=50000,HU_LEVEL_HANDS=10,HU_KEY='holdem-hu-v1',READ_KEY='holdem-read-v1';
+const huProg=()=>{try{return JSON.parse(localStorage.getItem(HU_KEY))||{}}catch(e){return{}}};
+const READ0=()=>({hands:0,vpip:0,pfr:0,f3bN:0,f3b:0,fbN:0,fb:0,rvN:0,rvBluff:0,bigN:0,bigStrong:0,smallN:0,smallStrong:0});
+const lifeRead=()=>{try{return Object.assign(READ0(),JSON.parse(localStorage.getItem(READ_KEY))||{})}catch(e){return READ0()}};
+/* what the opponent has seen of you: this match, plus every past match for the boss */
+function curRead(){if(!G.hu)return READ0();const R={...G.hu.read};if(G.hu.lv.boss){const L=lifeRead();for(const k in R)R[k]+=L[k]||0}return R}
+const rate=(x,n,prior,k=6)=>(x+prior*k)/(n+k);
+function readView(R){return{vpip:rate(R.vpip,R.hands,.5),pfr:rate(R.pfr,R.hands,.3),fb:rate(R.fb,R.fbN,.45),f3b:rate(R.f3b,R.f3bN,.5),
+  rvBluff:rate(R.rvBluff,R.rvN,.3),big:rate(R.bigStrong,R.bigN,.7),small:rate(R.smallStrong,R.smallN,.6),n:{h:R.hands,fb:R.fbN,f3b:R.f3bN,rv:R.rvN,big:R.bigN}}}
+/* how much this opponent trusts its read so far */
+const conf=(n,full=12)=>Math.min(1,n/full);
+function readNotes(){const R=curRead(),V=readView(R),w=G.hu.lv.read,L=[];
+  if(w===0)return['이 상대는 당신의 플레이를 읽지 않습니다.'];
+  if(R.hands<4)return['아직 당신을 파악하는 중입니다.'];
+  const pct=x=>Math.round(x*100)+'%';
+  L.push(`프리플랍 참여 ${pct(V.vpip)} · 레이즈 ${pct(V.pfr)} (${R.hands}핸드) → ${V.vpip>.65?'넓게 들어온다고 보고 더 약한 패로도 맞섭니다':V.vpip<.4?'좋은 패만 들어온다고 보고 당신이 들어오면 조심합니다':'평범하게 봅니다'}`);
+  if(R.fbN>=3)L.push(`벳을 맞으면 폴드 ${pct(V.fb)} (${R.fbN}회) → ${V.fb>.55?'블러프를 늘립니다':V.fb<.35?'블러프를 줄이고 얇게 밸류 벳합니다':'평소대로 칩니다'}`);
+  if(R.f3bN>=2)L.push(`3벳에 폴드 ${pct(V.f3b)} (${R.f3bN}회) → ${V.f3b>.6?'3벳 블러프를 늘립니다':'3벳은 좋은 패로만 합니다'}`);
+  if(R.rvN>=2)L.push(`쇼다운에서 본 리버 벳 중 블러프 ${pct(V.rvBluff)} (${R.rvN}회) → ${V.rvBluff>.4?'리버 벳에 더 넓게 콜합니다':V.rvBluff<.2?'리버 벳에 더 쉽게 접습니다':'평소대로 콜합니다'}`);
+  if(R.bigN>=2)L.push(`큰 벳(팟 90% 이상)이 강한 패였던 비율 ${pct(V.big)} (${R.bigN}회) → ${V.big>.8?'큰 벳에는 접습니다':V.big<.5?'큰 벳을 블러프로 의심합니다':'크기만으로 판단하지 않습니다'}`);
+  if(L.length===1&&R.hands<10)L.push('벳·콜 패턴은 아직 표본이 적습니다.');
+  return L}
+/* ---- learning: only what a human at the table could see ---- */
+function huLearnAction(p,act){if(!G.hu||!p.hero)return;const R=G.hu.read,toCall=G.currentBet-p.bet;
+  if(G.street===0){if(!G.hu.flags.vp&&(act.t==='call'||act.t==='raise')){G.hu.flags.vp=1;R.vpip++}
+    if(!G.hu.flags.pr&&act.t==='raise'){G.hu.flags.pr=1;R.pfr++}
+    if(toCall>0&&p.preLevel>=1&&G.numRaises>=2){R.f3bN++;if(act.t==='fold')R.f3b++}}
+  else{if(toCall>0){R.fbN++;if(act.t==='fold')R.fb++}
+    if(act.t==='raise'){const pot=potTotal();const add=act.to-p.bet;G.hu.bets.push({street:G.street,frac:add/Math.max(1,pot-(G.currentBet-p.bet)*0)})}}}
+function huLearnShowdown(){if(!G.hu)return;const hero=G.players[0];const R=G.hu.read;R.hands++;
+  if(G.showdown&&!hero.folded){const t=tierOf(hero.cards,G.board);const strong=['nuts','strong','top'].includes(t);
+    for(const b of G.hu.bets){if(b.street===3){R.rvN++;if(!strong)R.rvBluff++}
+      if(b.frac>=.9){R.bigN++;if(strong)R.bigStrong++}else{R.smallN++;if(strong)R.smallStrong++}}}}
+/* ---- exploits the bots apply, scaled by how much they read and how sure they are ---- */
+function huAdjust(p){const z={bluff:0,thin:0,callAdj:0,threeBet:0,heroWide:1};if(!G.hu||!p.read)return z;
+  const R=curRead(),V=readView(R),w=p.read;
+  const wf=w*conf(R.fbN);z.bluff=(V.fb-.45)*wf*.9;z.thin=Math.max(0,.45-V.fb)*wf*.5;
+  z.threeBet=Math.max(0,V.f3b-.5)*w*conf(R.f3bN,6)*.3;
+  z.callAdj=(V.rvBluff-.3)*w*conf(R.rvN,6)*.35;
+  z.bigAdj=R.bigN>=2?(V.big>.8?-.1:V.big<.5?.1:0)*w*conf(R.bigN,5):0;
+  z.heroWide=1+(V.vpip-.5)*w*conf(R.hands,15);return z}
+function huStyleForHand(){if(!G.hu||!G.hu.lv.boss)return;const bot=G.players[1];if(!bot)return;
+  const i=Math.floor((G.hu.hands-1)/8)%4,src=HU_LEVELS[1+i];
+  for(const k of['loose','aggr','station','bluff','trap','xr','over','shove'])bot[k]=src[k]??0;bot.mood=src.name}
+/* ---- match flow ---- */
+function abortHand(){G.epoch=(G.epoch||0)+1;G.running=false;G.heroWait=null;G.acting=-1;lockControls('')}
+function startHU(i){const lv=HU_LEVELS[i];
+  abortHand();if(!G.away){saveSession();G.away=true}huFinalize();
+  G.hu={i,lv,hands:0,read:READ0(),bets:[],flags:{}};SBA=HU_BLINDS[0][0];BBA=HU_BLINDS[0][1];
+  NP=2;G.players=[{name:'나',hero:true,stack:HU_STACK},{...lv,hero:false,stack:HU_STACK,rebuyLeft:0}];G.button=Math.floor(Math.random()*2);
+  G.hand=0;G.rebuyLeft=0;G.invested=HU_STACK;G.stats={hands:0,dec:0,good:0,ok:0,bad:0};G.result=null;G.ticker='';
+  $('resultBox').innerHTML='';render();next()}
+function huFinalize(){if(!G.hu)return;const R=G.hu.read,L=lifeRead();for(const k in R)L[k]=(L[k]||0)+R[k];try{localStorage.setItem(READ_KEY,JSON.stringify(L))}catch(e){}G.hu=null}
+function backToLive(){if(!G.away)return;abortHand();huFinalize();G.away=false;SBA=500;BBA=1000;$('resultBox').innerHTML='';const s=loadSession();if(s)resume(s);else startSession()}
+function huBlindStep(){if(!G.hu)return;G.hu.hands++;G.hu.bets=[];G.hu.flags={};const lvl=Math.min(HU_BLINDS.length-1,Math.floor((G.hu.hands-1)/HU_LEVEL_HANDS));
+  [SBA,BBA]=HU_BLINDS[lvl];G.hu.blindLvl=lvl;huStyleForHand()}
+function renderHUBanner(){const b=$('huBanner');if(!G.hu){b.hidden=true;return}b.hidden=false;const lv=G.hu.lv,left=HU_LEVEL_HANDS-((G.hu.hands-1)%HU_LEVEL_HANDS)-1;
+  const notes=readNotes();
+  b.innerHTML=`<div class="hutop"><strong>헤즈업 ${G.hu.i+1}단계 · vs ${lv.name}</strong><span class="ctx">${lv.sty}${lv.boss&&G.players[1]?.mood?` · 지금은 ${G.players[1].mood}처럼`:''}</span></div>
+   <div class="ctx">블라인드 ${fmt(SBA)}/${fmt(BBA)}${G.hu.blindLvl<HU_BLINDS.length-1?` · ${left}핸드 뒤 상승`:''} · 판단 점수 ${G.stats.dec?Math.round((G.stats.good+G.stats.ok*.5)/G.stats.dec*100)+'점':'–'}</div>
+   <details class="notes"${G.hu.notesOpen?' open':''}><summary>상대가 읽은 당신</summary><ul>${notes.map(n=>`<li>${n}</li>`).join('')}</ul></details>
+   <button class="link" id="huQuit">도전 그만두기</button>`;
+  b.querySelector('details').ontoggle=e=>{G.hu.notesOpen=e.target.open};
+  $('huQuit').onclick=()=>{abortHand();huFinalize();setMode('hu')}}
+function huMap(){const p=huProg();const tot=HU_LEVELS.reduce((s,_,i)=>s+(p[i]||0),0);
+  $('huMap').innerHTML=`<div class="smap"><div class="shdr"><h2>헤즈업 도전</h2><span class="stot">${tot} / ${HU_LEVELS.length*3} ★</span></div>
+   <p class="ctx">1:1로 붙어 상대 칩을 모두 따면 클리어. 둘 다 ${fmt(HU_STACK)}칩으로 시작하고, ${HU_LEVEL_HANDS}핸드마다 블라인드가 오릅니다. 리바인은 없어요. 단계가 오를수록 상대가 변칙적으로 치고, 당신의 습관을 더 빨리 읽고 공략합니다. 이기면 판단 점수로 별을 받습니다(85점 ★3 · 70점 ★2 · 그 아래 ★1).</p>
+   <div class="hugrid">${HU_LEVELS.map((lv,i)=>{const open=i===0||(p[i-1]||0)>=1,got=p[i]||0;
+     return `<button class="hucard ${lv.boss?'boss':''}" data-i="${i}" ${open?'':'disabled'}><span class="snum">${i+1}</span><span class="stitle">${lv.name} <span class="stag">${lv.sty}</span></span><span class="hudesc">${open?lv.desc:'이전 단계를 깨면 열립니다.'}</span><span class="hufoot"><span class="readbar" title="읽는 능력"><i style="width:${lv.read*100}%"></i></span><span class="sstars ${got?'got':''}">${open?STAR(got):'잠김'}</span></span></button>`}).join('')}</div>
+   ${(()=>{const L=lifeRead();return L.hands?`<p class="ctx">지금까지 헤즈업 ${L.hands}핸드. 카멜레온은 이 기록을 모두 알고 시작합니다.</p>`:''})()}</div>`;
+  $('huMap').querySelectorAll('.hucard').forEach(b=>b.onclick=()=>huIntro(+b.dataset.i))}
+function huIntro(i){const lv=HU_LEVELS[i];
+  $('huMap').innerHTML=`<div class="sstage"><div class="sbar"><button class="link" id="huBack">← 단계 목록</button></div>
+   <div class="shdr"><h2>${i+1}단계 · ${lv.name}</h2><span class="stag ${lv.boss?'realtag':''}">${lv.sty}</span></div>
+   <p>${lv.desc}</p><div class="fb hint"><div class="top"><span class="verdict">공략 힌트</span></div><p>${lv.tip}</p></div>
+   <p class="ctx">상대가 당신을 읽는 정도 <span class="readbar inline"><i style="width:${lv.read*100}%"></i></span> ${lv.read===0?'읽지 않음':lv.read<.5?'조금':lv.read<.8?'많이':'전부'}. 상대는 쇼다운에서 본 카드와 당신의 액션만으로 판단합니다. 대결 중 "상대가 읽은 당신"에서 확인할 수 있어요.</p>
+   <button class="btn prim" id="huGo">대결 시작<small>Enter</small></button></div>`;
+  $('huBack').onclick=huMap;$('huGo').onclick=()=>{startHU(i);setMode('hu')};$('huGo').focus({preventScroll:true})}
+function renderHUResult(){const r=G.result,hero=G.players[0],bot=G.players[1];const won=bot.stack<=0&&hero.stack>0,lost=hero.stack<=0;
+  const handG=G.handFb.reduce((m,f)=>(m[f.gr.g]++,m),{good:0,ok:0,bad:0});
+  const summary=G.handFb.length?`이번 핸드 판단: 좋음 ${handG.good} · 무난 ${handG.ok} · 실수 ${handG.bad}`:'이번 핸드는 판단할 차례가 없었습니다.';
+  let body='',btns='';
+  if(won||lost){const s=G.stats,score=s.dec?Math.round((s.good+s.ok*.5)/s.dec*100):0;const st=won?(score>=85?3:score>=70?2:1):0;
+    if(st){const p=huProg();if(st>(p[G.hu.i]||0)){p[G.hu.i]=st;try{localStorage.setItem(HU_KEY,JSON.stringify(p))}catch(e){}}}
+    body=`<p><strong>${won?`${G.hu.lv.name}을(를) 이겼습니다! ${STAR(st)}`:`${G.hu.lv.name}에게 졌습니다.`}</strong> ${G.hu.hands}핸드 · 판단 점수 ${score}점 (좋음 ${s.good} · 무난 ${s.ok} · 실수 ${s.bad})</p>
+     <div class="ctx">상대가 마지막에 읽은 당신</div><ul>${readNotes().map(n=>`<li>${n}</li>`).join('')}</ul>`;
+    const nextOpen=won&&G.hu.i<HU_LEVELS.length-1;
+    btns=`<div class="sopts"><button class="btn" id="huRetry">다시 도전</button>${nextOpen?`<button class="btn prim" id="huNext">다음 단계<small>Enter</small></button>`:''}<button class="btn" id="huList">단계 목록</button></div>`}
+  else btns=`<button class="btn prim" id="nextBtn">다음 핸드<small>Enter</small></button>`;
+  $('resultBox').innerHTML=`<div class="result"><h2>${r.title}</h2><ul>${r.lines.filter(l=>!/리바인|탈락/.test(l)).map(l=>`<li>${l}</li>`).join('')}</ul>
+    <div class="ctx" style="font-size:13px">이번 핸드 <strong style="color:${r.heroDelta>0?'var(--good)':r.heroDelta<0?'var(--bad)':'var(--ink)'}">${r.heroDelta>0?'+':''}${fmt(r.heroDelta)}</strong> · ${summary}</div>${body}${btns}</div>`;
+  lockControls('');renderHUBanner();
+  const nb=$('nextBtn');if(nb)nb.onclick=next;
+  const i=G.hu.i;const rt=$('huRetry');if(rt)rt.onclick=()=>{startHU(i);setMode('hu')};
+  const nx=$('huNext');if(nx)nx.onclick=()=>{huFinalize();setMode('hu');huIntro(i+1)};
+  const ls=$('huList');if(ls)ls.onclick=()=>{huFinalize();setMode('hu')};
+  ($('huNext')||nb||rt)?.focus({preventScroll:true})}
+
 /* ===== story mode ===== */
 const STORY={"chapter": 1, "title": "첫 테이블", "stages": [{"id": 1, "title": "첫 오픈", "tag": "프리플랍", "intro": "6인 테이블, 모두 100BB. 당신은 첫 번째로 행동하는 UTG입니다. 뒤에 다섯 명이 남아 있어요.", "nodes": {"a": {"type": "chart", "pos": "UTG", "hero": "Ad Qc", "board": "", "potBB": 1.5, "toCallBB": 1, "situ": "아무도 액션하지 않았습니다. 무엇을 할까요?", "options": [{"id": "fold", "label": "폴드", "stars": 2, "why": "AQo는 UTG에서도 상위 약 3% 안에 드는 핸드라 접기엔 아깝습니다."}, {"id": "limp", "label": "콜(림프) 1BB", "stars": 1, "why": "림프는 주도권을 버리고, 뒤에서 레이즈가 오면 애매한 상황만 남깁니다."}, {"id": "raise", "label": "레이즈 2.5BB", "stars": 3, "why": "앞이 다 폴드한 상황에서 강한 핸드는 먼저 레이즈해 팟을 가져가거나 키웁니다."}], "best": "raise", "outcome": {"raise": "BTN과 BB가 폴드하고 CO만 콜. 좋은 시작입니다.", "fold": "다음 핸드를 기다립니다. 상위 3% 핸드를 버렸어요.", "limp": "뒤에서 BTN이 5BB로 레이즈. 당신은 애매하게 콜하고 아웃오브포지션으로 끌려갑니다."}}}, "start": "a"}, {"id": 2, "title": "참는 법", "tag": "프리플랍", "intro": "같은 UTG 자리. 이번엔 그림 카드가 들어왔지만 짝이 안 맞습니다.", "nodes": {"a": {"type": "chart", "pos": "UTG", "hero": "Kc 9d", "board": "", "potBB": 1.5, "toCallBB": 1, "situ": "아무도 액션하지 않았습니다. 무엇을 할까요?", "options": [{"id": "fold", "label": "폴드", "stars": 3, "why": "K9o는 UTG 오픈 범위(상위 약 15%) 밖입니다. 뒤 다섯 명 중 누군가 더 좋은 K나 A를 들고 있을 확률이 높아요."}, {"id": "limp", "label": "콜(림프) 1BB", "stars": 1, "why": "약한 핸드로 림프하면 주도권도 없고 도미네이트 당하기 쉽습니다."}, {"id": "raise", "label": "레이즈 2.5BB", "stars": 2, "why": "버튼이라면 좋은 오픈이지만, UTG에선 콜을 받으면 KQ·KJ·AK 같은 패에 지배당합니다."}], "best": "fold", "outcome": {"fold": "참았습니다. 이 핸드에서 CO가 KJ로 오픈했어요.", "raise": "CO가 3벳. 폴드하면 2.5BB를 잃습니다.", "limp": "BTN이 레이즈하고 당신은 끌려다닙니다."}}}, "start": "a"}, {"id": 3, "title": "버튼의 특권", "tag": "프리플랍", "intro": "이번엔 버튼(BTN). 앞에서 모두 폴드했고 블라인드 두 명만 남았습니다.", "nodes": {"a": {"type": "chart", "pos": "BTN", "hero": "7s 6s", "board": "", "potBB": 1.5, "toCallBB": 1, "situ": "UTG, HJ, CO 모두 폴드. 무엇을 할까요?", "options": [{"id": "fold", "label": "폴드", "stars": 2, "why": "버튼은 포스트플랍에서 항상 마지막에 행동하는 가장 유리한 자리입니다. 76s 같은 수트 커넥터는 여기서 열어야 이익입니다."}, {"id": "limp", "label": "콜(림프) 1BB", "stars": 1, "why": "버튼 림프는 블라인드를 훔칠 기회를 버립니다."}, {"id": "raise", "label": "레이즈 2.5BB", "stars": 3, "why": "버튼 오픈 범위는 상위 40%를 넘습니다. 블라인드가 자주 폴드하고, 콜해도 포지션이 있어요."}], "best": "raise", "outcome": {"raise": "SB 폴드, BB 폴드. 블라인드 1.5BB를 가져옵니다.", "fold": "블라인드를 훔칠 기회를 넘겼습니다.", "limp": "BB가 체크하고 3명이 작은 팟을 봅니다."}}}, "start": "a"}, {"id": 4, "title": "올인을 받을 때", "tag": "팟 오즈", "intro": "토너먼트 후반처럼 스택이 짧아진 상황. SB가 당신의 BB를 향해 올인합니다.", "nodes": {"a": {"type": "allin", "pos": "BB", "hero": "As 8d", "board": "", "potBB": 16, "toCallBB": 14, "situ": "모두 15BB 남은 상태. 앞이 다 폴드하고 SB가 15BB 올인했습니다. 당신은 BB(1BB 냄). 14BB를 더 내고 콜할까요?", "oppRange": "SB 올인 범위 · 상위 약 45% (AA, KK, QQ, JJ, TT, 99 … Q3s, 87s, J5s, T8o)", "eq": 0.54103, "options": [{"id": "fold", "label": "폴드", "ev": 0, "loss": 2.23, "stars": 2}, {"id": "call", "label": "콜 14BB", "ev": 2.23, "loss": 0, "stars": 3}], "best": "call", "outcome": {"call": "SB는 K♣9♥. 보드 Q♦7♣4♠ 2♥ J♦, A-하이로 이깁니다. 결과보다 콜 결정이 맞았다는 게 중요해요.", "fold": "SB가 K♣9♥를 보여줍니다. 넓은 올인 범위엔 A8o가 앞서는 경우가 많아요."}, "lesson": "A8o의 승률은 54.1%, 콜에 필요한 승률은 14 ÷ 30 = 46.7%.", "showPot": 16}}, "start": "a"}, {"id": 5, "title": "드로우의 값", "tag": "팟 오즈", "intro": "플랍에서 넛 플러시 드로우를 잡았는데, 상대가 올인으로 맞섭니다.", "nodes": {"a": {"type": "allin", "pos": "CO", "hero": "Ah 5h", "board": "Kh 8h 2c", "potBB": 8.5, "toCallBB": 24.5, "situ": "스택 30BB. 당신이 CO에서 2.5BB 오픈, BB만 콜. 플랍에서 3BB 벳했는데 BB가 남은 27.5BB 올인. 24.5BB를 더 내고 콜할까요?", "oppRange": "BB 체크-올인 범위 · 셋(KK·88·22), 투페어 K8, 탑페어(AK·KQ·KJ·KT·K9), 더 낮은 하트 드로우(Q♥J♥·J♥T♥·T♥9♥ 등)", "eq": 0.43181979539807, "options": [{"id": "fold", "label": "폴드", "ev": 0, "loss": 1.63, "stars": 1}, {"id": "call", "label": "콜 24.5BB", "ev": 1.63, "loss": 0, "stars": 3}], "best": "call", "outcome": {"call": "BB는 K♠Q♦. 턴 3♠, 리버 J♥ — 넛 플러시 완성. 이번엔 이겼지만 지는 경우도 많은 동전 던지기에 가까운 콜이었어요.", "fold": "BB가 K♠Q♦를 보여줍니다. 넛 플러시 드로우 + A 오버카드는 생각보다 승률이 높습니다."}, "lesson": "넛 플러시 드로우 + A 오버카드의 승률 43.2%, 필요한 승률 24.5 ÷ 60.5 = 40.5%.", "showPot": 36}}, "start": "a"}, {"id": 6, "title": "거트샷의 함정", "tag": "팟 오즈", "intro": "스트레이트까지 한 장. 하지만 그 한 장이 몇 장이나 남았는지 세어 봐야 합니다.", "nodes": {"a": {"type": "allin", "pos": "BTN", "hero": "Jc Tc", "board": "Qd 8s 3c 2h", "potBB": 12, "toCallBB": 12, "situ": "턴까지 왔고 팟은 12BB. 상대가 남은 12BB를 올인했습니다. 9가 나오면 스트레이트입니다.", "oppRange": "상대 범위 · Q 원페어(AQ·KQ·QJ·QT·Q9s), 셋(QQ·88·33), 투페어 Q8s", "eq": 0.089458413926499, "options": [{"id": "fold", "label": "폴드", "ev": 0, "loss": 0, "stars": 3}, {"id": "call", "label": "콜 12BB", "ev": -8.78, "loss": 8.78, "stars": 0}], "best": "fold", "outcome": {"fold": "상대는 A♠Q♣. 리버 5♦ — 콜했다면 졌습니다.", "call": "상대는 A♠Q♣. 리버 5♦, 스트레이트를 놓쳐 집니다."}, "lesson": "거트샷 아웃 4장(9)뿐이라 승률 8.9%, 필요한 승률 12 ÷ 36 = 33%. 아웃 × 2 ≈ 8%로 암산해도 됩니다.", "showPot": 24}}, "start": "a"}, {"id": 7, "title": "얇은 밸류", "tag": "밸류 벳", "intro": "리버까지 왔고 아마 이기고 있습니다. 문제는 \"얼마나 더 받아낼 수 있나\"예요.", "nodes": {"a": {"type": "river", "pos": "BTN", "hero": "As Jd", "board": "Jc 7d 4s 2h 9c", "potBB": 14, "toCallBB": 0, "situ": "BB가 플랍·턴에서 체크-콜했고 리버에서도 체크했습니다. 팟 14BB, 남은 스택 80BB. 탑페어 탑키커예요.", "oppRange": "BB 체크-콜 범위 · 약한 J(KJ·QJ·JT), 7 페어(A7·87s·76s), 포켓페어(88·TT·66·55), 리버에 맞은 투페어·스트레이트(J8s·97s·T8s) 조금", "options": [{"id": "check", "label": "체크", "ev": 13.07, "loss": 3.36, "stars": 1}, {"id": "bet⅓팟", "label": "벳 ⅓팟 (4.7BB)", "ev": 15.56, "fold": 0.33242506811989114, "loss": 0.87, "stars": 2}, {"id": "bet⅔팟", "label": "벳 ⅔팟 (9.3BB)", "ev": 16.43, "fold": 0.5061307901907354, "loss": 0, "stars": 3}, {"id": "bet팟", "label": "벳 팟 (14BB)", "ev": 14.42, "fold": 0.769754768392371, "loss": 2.01, "stars": 2}, {"id": "bet올인", "label": "벳 올인 (80BB)", "ev": 12.3, "fold": 0.8760217983651231, "loss": 4.13, "stars": 1}], "best": "bet⅔팟", "outcome": {"check": "BB는 Q♠J♠. 쇼다운으로 14BB를 가져가지만, 벳했다면 더 받을 수 있었어요."}, "outcomeDefault": "BB는 Q♠J♠로 콜. 더 약한 J에게서 밸류를 받아냈습니다.", "lesson": "상대가 콜할 수 있는 더 약한 패가 충분하면 \"얇은 밸류 벳\"이 체크보다 낫습니다. 너무 크게 걸면 약한 패가 다 도망가요."}}, "start": "a"}, {"id": 8, "title": "블러프 캐치", "tag": "리버 콜", "intro": "드로우가 많던 보드에서 리버는 블랭크. 상대가 크게 겁니다. 정말 강한 걸까요?", "nodes": {"a": {"type": "facing", "pos": "BB", "hero": "Ad Td", "board": "Ts 9s 4d 2c Kh", "potBB": 20, "toCallBB": 15, "situ": "BTN이 플랍·턴에 벳했고 리버 K에서 15BB(¾팟)를 겁니다. 팟 20BB. 당신은 T 페어 A 키커. 콜할까요?", "oppRange": "BTN 리버 벳 범위 · 밸류(AK·KQs·KT·K9s, 셋, QJs 스트레이트) + 놓친 스페이드 드로우 블러프(A♠Q♠·A♠5♠·Q♠8♠·J♠8♠·8♠7♠·7♠6♠ 등)", "eq": 0.3619909502262443, "options": [{"id": "fold", "label": "폴드", "ev": 0, "loss": 3.1, "stars": 1}, {"id": "call", "label": "콜 15BB", "ev": 3.1, "loss": 0, "stars": 3}], "best": "call", "outcome": {"call": "BTN은 J♠8♠ — 스트레이트와 플러시를 다 놓친 블러프였습니다.", "fold": "BTN이 J♠8♠를 보여주며 웃습니다. 블러프였어요."}, "lesson": "콜에 필요한 승률은 15 ÷ 50 = 30%. 상대 범위에 놓친 스페이드 드로우가 많아서 T 페어가 36%를 이깁니다. 그래서 콜이 이득이에요.", "showPot": 35}}, "start": "a"}, {"id": 9, "title": "놓친 드로우의 기회", "tag": "블러프", "intro": "플러시 드로우를 놓쳤습니다. 이대로 포기할까요, 아니면 이야기를 만들까요?", "nodes": {"a": {"type": "river", "pos": "BTN", "hero": "6s 5s", "board": "As Kd 8s 2h Jd", "potBB": 9, "toCallBB": 0, "situ": "플랍에서 c-벳, BB 콜. 턴은 둘 다 체크. 리버에서 BB가 또 체크했습니다. 팟 9BB. 당신은 6-하이로 거의 못 이깁니다.", "oppRange": "BB 범위 · 턴에 체크로 약함을 보임. 약한 A(A2~A5), K 페어, 8 페어(98s·87s), 작은 포켓페어(22~77) 위주", "options": [{"id": "check", "label": "체크", "ev": 0, "loss": 4.05, "stars": 1}, {"id": "bet½팟", "label": "벳 ½팟 (4.5BB)", "ev": 3.05, "fold": 0.5592791411042944, "loss": 1, "stars": 2}, {"id": "bet¾팟", "label": "벳 ¾팟 (6.8BB)", "ev": 2.06, "fold": 0.5592791411042944, "loss": 1.99, "stars": 1}, {"id": "bet팟", "label": "벳 팟 (9BB)", "ev": 4.05, "fold": 0.7249233128834359, "loss": 0, "stars": 3}], "best": "bet팟", "outcome": {"check": "BB가 7♣7♥를 보여줍니다. 6-하이로는 질 수밖에 없어요."}, "outcomeDefault": "BB가 한참 고민하다 7♣7♥를 접습니다. 블러프 성공.", "lesson": "체크하면 거의 다 지는 패는, 상대가 충분히 폴드할 크기로 블러프하는 게 이득입니다. 상대가 턴에 체크한 건 강한 패가 적다는 신호예요."}}, "start": "a"}, {"id": 10, "title": "세기의 블러프", "tag": "보스 · 실제 핸드", "real": true, "intro": "2003년 WSOP 메인 이벤트 헤즈업. 온라인 예선으로 올라온 회계사 크리스 머니메이커(당신)가 프로 새미 파르하와 맞섭니다. 블라인드 20,000/40,000, 앤티 5,000. 당신 4,600,000, 파르하 약 3,700,000. 버튼에서 K♠7♥로 100,000 레이즈, 파르하 콜.", "real_play": "실제로 머니메이커는 턴에서 800,000으로 레이즈했고 파르하가 콜, 리버 3♥에서 파르하 체크 후 올인했습니다. 파르하는 Q♠9♥(9 페어)를 접었고, 머니메이커는 이후 우승하며 \"포커 붐\"을 일으켰습니다.", "source": "https://www.pokernews.com/strategy/analyzing-moneymaker-bluff-of-the-century-against-farha-35218.htm", "nodes": {"a": {"type": "tree", "pos": "BTN", "hero": "Ks 7h", "board": "9s 2d 6s 8s", "potBB": 12.75, "toCallBB": 7.5, "unit": 40000, "situ": "플랍 9♠2♦6♠은 둘 다 체크. 턴 8♠에서 파르하가 팟(210,000)보다 큰 300,000을 벳합니다. 당신은 K♠ 플러시 드로우 + 양방 스트레이트 드로우(5 또는 10)를 들고 있어요.", "oppRange": "파르하의 턴 벳 범위(가정) · 9 페어(A9~T9), 투페어(98·96s·92s), 8 페어, 셋, 스트레이트(T7·75s), 플러시·스페이드 드로우", "eq": 0.32987367823433394, "options": [{"id": "fold", "label": "폴드", "ev": 0, "loss": 4.61, "stars": 1}, {"id": "call", "label": "콜 300,000", "ev": 4.61, "next": "rc", "loss": 0, "stars": 3}, {"id": "raise", "label": "레이즈 800,000", "ev": -0.05, "fold": 0.2111631537861047, "next": "rr", "loss": 4.66, "stars": 1}, {"id": "allin", "label": "올인 3,600,000", "ev": -9.52, "fold": 0.5111631537861047, "loss": 14.13, "stars": 0}], "best": "call", "outcome": {"fold": "카드를 던집니다. 파르하는 Q♠9♥를 보여주지 않고 팟을 가져갑니다. 역사에 남을 장면은 일어나지 않았어요.", "allin": "파르하가 한참 고민하다 콜. 리버 3♥ — 둘 다 놓쳤고 Q♠9♥의 9 페어가 이깁니다."}, "lesson": "플러시 드로우 + 양방 스트레이트 드로우는 아웃이 15장 안팎이라 이 범위 상대 승률 33%. 리버에서 블러프할 수 있다는 점도 콜·레이즈의 가치를 높입니다."}, "rc": {"type": "river", "pos": "BTN", "hero": "Ks 7h", "board": "9s 2d 6s 8s 3h", "potBB": 20.25, "toCallBB": 0, "unit": 40000, "situ": "턴에서 콜했습니다. 리버 3♥. 스트레이트도 플러시도 놓쳤습니다. K-하이. 파르하가 체크합니다. 팟 810,000.", "oppRange": "파르하의 범위 · 턴에 벳하고 콜을 받은 패들. 9 페어와 8 페어, 드로우를 놓친 패가 섞여 있음", "options": [{"id": "check", "label": "체크", "ev": 0, "loss": 0, "stars": 3}, {"id": "half", "label": "벳 ½팟 405,200", "ev": -4.45, "fold": 0.18712463394053733, "loss": 4.45, "stars": 1}, {"id": "allin", "label": "올인 3,300,000", "ev": -4.98, "fold": 0.7544547575321405, "loss": 4.98, "stars": 1}], "best": "check", "outcome": {"check": "파르하가 Q♠9♥를 보여줍니다. 9 페어. K-하이로 집니다.", "allin": "파르하가 한참 동안 당신을 바라보다가 Q♠9♥를 접습니다. 실제 2003년의 그 장면입니다.", "half": "파르하가 Q♠9♥로 콜합니다. 9 페어는 반 팟 정도엔 콜하기 쉬워요."}, "lesson": "K-하이로 체크하면 거의 모든 패에 집니다. 상대가 9 페어 정도의 \"중간 패\"를 들고 있을 때는, 작은 벳보다 아주 큰 벳이 접게 만들기 쉽습니다."}, "rr": {"type": "river", "pos": "BTN", "hero": "Ks 7h", "board": "9s 2d 6s 8s 3h", "potBB": 32.75, "toCallBB": 0, "unit": 40000, "situ": "턴에서 800,000으로 레이즈했고 파르하가 콜했습니다. 리버 3♥. 스트레이트도 플러시도 놓쳤습니다. K-하이. 파르하가 체크합니다. 팟 1,310,000.", "oppRange": "파르하의 범위 · 턴에 벳하고 레이즈에 콜 패들. 9 페어와 8 페어, 드로우를 놓친 패가 섞여 있음", "options": [{"id": "check", "label": "체크", "ev": 0, "loss": 1.4, "stars": 2}, {"id": "half", "label": "벳 ½팟 655,200", "ev": -11.63, "fold": 0.09659360792562975, "loss": 13.03, "stars": 1}, {"id": "allin", "label": "올인 2,800,000", "ev": 1.4, "fold": 0.6948836262468632, "loss": 0, "stars": 3}], "best": "allin", "outcome": {"check": "파르하가 Q♠9♥를 보여줍니다. 9 페어. K-하이로 집니다.", "allin": "파르하가 한참 동안 당신을 바라보다가 Q♠9♥를 접습니다. 실제 2003년의 그 장면입니다.", "half": "파르하가 Q♠9♥로 콜합니다. 9 페어는 반 팟 정도엔 콜하기 쉬워요."}, "lesson": "K-하이로 체크하면 거의 모든 패에 집니다. 상대가 9 페어 정도의 \"중간 패\"를 들고 있을 때는, 작은 벳보다 아주 큰 벳이 접게 만들기 쉽습니다."}}, "start": "a"}]};
 const SKEY='holdem-story-v1';
@@ -922,10 +1061,15 @@ function renderStage(){const s=SV.stage,n=s.nodes[SV.node];const done=SV.chosen!
   const rb=$('sRetry');if(rb)rb.onclick=()=>startStage(s.id);
   const gb=$('sGo');if(gb)gb.onclick=()=>{const i=STORY.stages.indexOf(s);startStage(STORY.stages[i+1].id)};
   ($('sNext')||$('sGo')||$('sRetry'))?.focus({preventScroll:true})}
-function setMode(m){const live=m==='live';$('liveMode').hidden=!live;$('storyMode').hidden=live;
-  document.querySelectorAll('.mode').forEach(b=>b.setAttribute('aria-selected',String((b.dataset.m==='live')===live)));
-  $('npLabel').hidden=!live;const ft=document.querySelector('footer');if(ft)ft.hidden=!live;
-  if(!live&&!SV.stage)storyMap();try{localStorage.setItem('holdem-mode',m)}catch(e){}}
+function setMode(m){
+  if(m==='live')backToLive();
+  document.querySelectorAll('.mode').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.m===m)));
+  $('storyMode').hidden=m!=='story';
+  $('liveMode').hidden=!(m==='live'||(m==='hu'&&G.hu));
+  $('huMap').hidden=!(m==='hu'&&!G.hu);
+  $('npLabel').hidden=m!=='live';const ft=document.querySelector('footer');if(ft)ft.hidden=m!=='live';
+  if(m==='hu'&&!G.hu)huMap();renderHUBanner();
+  if(m==='story'&&!SV.stage)storyMap();try{localStorage.setItem('holdem-mode',m==='hu'?'live':m)}catch(e){}}
 document.querySelectorAll('.mode').forEach(b=>b.onclick=()=>setMode(b.dataset.m));
 
 /* ===== settings ===== */
@@ -949,9 +1093,10 @@ function renderSettings(){const a=loadReports();$('repCount').textContent=`${a.l
 $('bFold').onclick=()=>heroAct('fold');$('bCall').onclick=()=>heroAct('call');$('bRaise').onclick=()=>heroAct('raise');
 $('hintBtn').onclick=()=>{G.hintShown=true;renderCoach()};
 document.addEventListener('keydown',e=>{if(e.metaKey||e.ctrlKey||e.altKey||e.target.tagName==='INPUT')return;const k=e.key.toLowerCase();
+  if(!$('huMap').hidden){if(k==='enter'&&$('huGo')){e.preventDefault();$('huGo').click()}return}
   if(!$('storyMode').hidden){if(k==='enter'){const b=$('sNext')||$('sGo');if(b){e.preventDefault();b.click()}}return}
   if(G.heroWait){if(k==='f')heroAct('fold');else if(k==='c')heroAct('call');else if(k==='r'&&!$('bRaise').disabled)heroAct('raise');else if(k==='h'){G.hintShown=true;renderCoach()}}
-  else if(k==='enter'&&G.result){const b=$('nextBtn')||$('rebuyBtn')||$('restartBtn');if(b){e.preventDefault();b.click()}}});
+  else if(k==='enter'&&G.result){const b=$('huNext')||$('nextBtn')||$('rebuyBtn')||$('restartBtn')||$('huRetry');if(b){e.preventDefault();b.click()}}});
 
 window.claude?.hot?.snapshot?.(()=>snap());
 function boot(data){try{if(localStorage.getItem('holdem-mode')==='story')setTimeout(()=>setMode('story'),0)}catch(e){}
