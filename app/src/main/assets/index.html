@@ -362,6 +362,34 @@ h1{font-size:20px;white-space:nowrap}
 .acts .btn small{white-space:nowrap}
 .help summary{cursor:pointer;text-decoration:underline}
 .help p{margin:6px 0 0}
+/* ---- seats with avatars, readable folded seats ---- */
+.ptop{display:flex;justify-content:center;align-items:flex-end;height:34px;margin-bottom:-7px}
+.ptop .pcards{height:auto;margin:0 0 0 -4px}
+.ptop .pcards:empty{display:none}
+.pav{width:30px;height:30px;border-radius:50%;flex:none;display:grid;place-items:center;font-weight:700;font-size:14px;line-height:1;color:#fff;background:radial-gradient(circle at 35% 30%,hsl(var(--h) 55% 50%),hsl(var(--h) 60% 28%));border:2px solid #0b1d16;box-shadow:0 2px 5px rgba(0,0,0,.5);position:relative;z-index:1}
+.pseat.turn .pav{border-color:var(--brass);box-shadow:0 0 0 2px var(--brass),0 0 12px rgba(217,181,92,.7)}
+.pseat.won .pav{border-color:var(--good)}
+.pseat.out{opacity:1}
+.pseat.out .pav{filter:grayscale(1);opacity:.5}
+.pseat.out .pbox,.pseat.out .pbadge{opacity:.6}
+.pseat.out .pact{opacity:.75}
+/* ---- table motion: deal, board flip, whose turn, winner ---- */
+@media (prefers-reduced-motion:no-preference){
+.card.deal{animation:deal .34s cubic-bezier(.2,.8,.3,1) backwards}
+.card.deal+.card.deal{animation-delay:.09s}
+.phero .card.deal{animation-name:dealme}
+@keyframes deal{from{translate:0 34px;scale:.5;opacity:0}}
+@keyframes dealme{from{translate:0 -90px;scale:.5;opacity:0}}
+.card.flip{animation:flip .36s ease-out backwards}
+.card.fd1{animation-delay:.13s}.card.fd2{animation-delay:.26s}
+@keyframes flip{from{transform:rotateY(88deg);opacity:.3}}
+.pseat.turn .pav{animation:ring 1.3s ease-in-out infinite}
+@keyframes ring{50%{box-shadow:0 0 0 2px var(--brass),0 0 3px rgba(217,181,92,.25)}}
+.pseat.won .pbox,.phero.won .pbox{animation:wonp .8s ease-in-out 3}
+@keyframes wonp{50%{box-shadow:0 0 0 2px var(--good),0 0 18px rgba(95,208,138,.85)}}
+.card.win{animation:lift .35s ease-out forwards}
+@keyframes lift{to{translate:0 -5px}}
+}
 @media (max-width:420px){.card{--w:40px}.card.big{--w:54px}.card.sm{--w:21px}.seat .nm{font-size:12px}.btn{font-size:15px}}
 @media (prefers-reduced-motion:no-preference){.fb,.result{animation:pop .18s ease-out}@keyframes pop{from{transform:translateY(4px);opacity:.6}to{transform:none;opacity:1}}}
 </style>
@@ -916,8 +944,15 @@ function continueAct(){const P=G.paused;if(!P)return;commitAct(P.w,P.p,P.act)}
 /* ===== render ===== */
 function cardHTML(c,cls=''){return `<div class="card s-${cs(c)} ${cls}" aria-label="${rl(cr(c))}${SYM[cs(c)]}"><span class="r">${rl(cr(c))}</span><span class="s">${SYM[cs(c)]}</span></div>`}
 const backHTML=cls=>`<div class="card back ${cls}"></div>`;
+/* seat avatar: first letter of the name on a colour derived from the name */
+const avHue=n=>{let h=0;for(const ch of String(n))h=(h*31+ch.codePointAt(0))%360;return h};
+const avHTML=n=>`<span class="pav" style="--h:${avHue(n)}" aria-hidden="true">${esc(String(n).trim().slice(0,1)||'?')}</span>`;
+/* what has already been animated, so a re-render does not replay the deal or the board flip */
+const AN={hand:-1,bh:-1,board:0,mph:-1,mbh:-1,mboard:0};
 function render(){syncNP();if(G.hu)renderHUBanner();
   const hero=G.players[0];
+  const deal=!!hero.cards&&AN.hand!==G.hand&&!G.board.length&&!G.result;if(hero.cards)AN.hand=G.hand;
+  const b0=AN.bh===G.hand?AN.board:0;AN.bh=G.hand;AN.board=G.board.length;
   const net=hero.stack+(G.result?0:hero.total)-G.invested;
   $('meta').innerHTML=`<div><b>#${G.hand}</b></div><div>스택<b>${fmt(hero.stack)}</b></div><div>손익<b class="${net>0?'pos':net<0?'neg':''}">${net>0?'+':''}${fmt(net)}</b></div><div>리바인<b>${fmt(G.rebuyLeft)}</b></div><div><b>${ratingText()}</b></div>`;
   const winCards=new Set();if(G.showdown&&G.result)G.winners.forEach(i=>best5([...G.players[i].cards,...G.board]).forEach(c=>winCards.add(c)));
@@ -938,15 +973,15 @@ function render(){syncNP();if(G.hu)renderHUBanner();
       chips+=`<div class="dbtn" style="${pc(x,y)}" title="딜러 버튼">D</div>`}
     if(i===0)return;
     const show=G.showdown&&!p.folded;const won=G.result&&G.winners.has(i);
-    const cards=p.cards?(show?p.cards.map(c=>cardHTML(c,winCards.has(c)?'win':'')).join(''):(p.folded?'':backHTML('')+backHTML(''))):'';
+    const cards=p.cards?(show?p.cards.map(c=>cardHTML(c,winCards.has(c)?'win':'')).join(''):(p.folded?'':backHTML(deal?'deal':'')+backHTML(deal?'deal':''))):'';
     seats+=`<div class="pseat ${G.acting===i?'turn':''} ${p.folded?'out':''} ${won?'won':''} ${G.seatInfo===i?'sel':''}" data-i="${i}" role="button" tabindex="0" aria-label="${p.name} 정보 보기" style="${pc(CX+dx*RX,CY+dy*RY)}" title="${p.name} · ${p.sty||''}${p.rebuyLeft!==undefined?` · 리바인 ${p.rebuyLeft>0?fmt(p.rebuyLeft):'없음'}`:''}">
-      <div class="pcards">${cards}</div>
+      <div class="ptop">${avHTML(p.name)}<div class="pcards">${cards}</div></div>
       <div class="pbox"><span class="pname">${p.name}</span><span class="pstk">${p.stack>0||!p.allIn?fmt(p.stack):'올인'}</span></div>
       <span class="pbadge">${pos}</span><div class="pact">${(p.act||'').replace(/\s*[\d,]+$/,'')}</div>${G.allinEq&&typeof G.allinEq==='object'&&G.allinEq[i]!==undefined?`<span class="peq">${G.allinEq[i]}%</span>`:''}</div>`});
   $('bots').innerHTML=seats+chips+(G.seatInfo?seatInfoHTML(G.seatInfo):'');
   $('bots').querySelectorAll('.pseat').forEach(el=>{const open=()=>{G.seatInfo=G.seatInfo===+el.dataset.i?null:+el.dataset.i;render()};el.onclick=open;el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open()}}});
   const pc0=$('pClose');if(pc0)pc0.onclick=e=>{e.stopPropagation();G.seatInfo=null;render()};
-  const slots=[];for(let i=0;i<5;i++)slots.push(G.board[i]!==undefined?cardHTML(G.board[i],winCards.has(G.board[i])?'win':''):'<div class="card slot"></div>');
+  const slots=[];for(let i=0;i<5;i++)slots.push(G.board[i]!==undefined?cardHTML(G.board[i],(winCards.has(G.board[i])?'win':'')+(i>=b0?` flip fd${i-b0}`:'')):'<div class="card slot"></div>');
   $('board').innerHTML=slots.join('');
   const toCall=G.heroWait?G.currentBet-hero.bet:0;
   $('potline').innerHTML=`<span class="chip">팟 <em>${fmt(potTotal())}</em></span>`;
@@ -954,7 +989,7 @@ function render(){syncNP();if(G.hu)renderHUBanner();
   const pos=posName(0);const made=hero.cards&&G.board.length>=3?describe(hero.cards,G.board):null;
   const heroWon=G.result&&G.winners.has(0);
   $('hero').className='phero '+(G.acting===0?'turn ':'')+(hero.folded?'out ':'')+(heroWon?'won':'');
-  $('hero').innerHTML=`<div class="cards">${hero.cards?hero.cards.map(c=>cardHTML(c,'big '+(winCards.has(c)?'win':''))).join(''):''}</div>
+  $('hero').innerHTML=`<div class="cards">${hero.cards?hero.cards.map(c=>cardHTML(c,'big '+(winCards.has(c)?'win':'')+(deal?' deal':''))).join(''):''}</div>
     <div class="pbox"><span class="pname">나</span><span class="pbadge">${pos}</span><span class="pstk">${hero.stack>0||!hero.allIn?fmt(hero.stack):'올인'}</span>${hero.folded?'<span class="ctx">폴드</span>':''}</div>
     <div class="made">${made?made.text+(made.draws.length?' · '+made.draws.join(', '):''):(hero.cards?keyOf(hero.cards[0],hero.cards[1])+` · 상위 ${Math.max(1,Math.round(handPct(hero.cards)*100))}%`:'')}</div>
     ${hero.cards&&!hero.folded?`<div class="meter" title="패 강도"><i style="width:${Math.round(heroStrength(hero)*100)}%"></i></div>`:''}${G.allinEq&&typeof G.allinEq==='object'&&G.allinEq[0]!==undefined?`<span class="peq hero">${G.allinEq[0]}%</span>`:''}`;
@@ -1709,20 +1744,22 @@ function mpRender(){const el=$('mpMode');if(!el||el.hidden)return;let h='';const
   else{const N=S.seats.length;const meIdx=me>=0?me:0;const at=k=>{const t=(90+k*360/N)*Math.PI/180;return[Math.cos(t),Math.sin(t)]};const pc=(x,y)=>`left:${x.toFixed(1)}%;top:${y.toFixed(1)}%`;
     const CX=50,CY=45,RX=N>=7?38:40,RY=37;let seats='',chips='';
     const now=MP.net.now(),left=S.toAct>=0?Math.max(0,Math.ceil((S.deadline-now)/1000)):0;
+    const gotHole=MP.hole&&MP.hole.hand===S.handNo,deal=gotHole&&AN.mph!==S.handNo&&!S.board.length;if(gotHole)AN.mph=S.handNo;
+    const b0=AN.mbh===S.handNo?AN.mboard:0;AN.mbh=S.handNo;AN.mboard=S.board.length;
     S.seats.forEach((s,i)=>{const k=(i-meIdx+N)%N;const[dx,dy]=at(k);const sx=CX+dx*RX,sy=CY+dy*RY;
       if(s.bet>0){let x,y;if(k===0){x=CX;y=CY+RY*.56}else if(dy<-.6){x=sx;y=sy+14}else if(Math.abs(dx)>.6){x=sx-dx*20;y=dy>.3?sy-12:sy+11}else{x=CX+dx*RX*.68;y=CY+dy*RY*.68}if(k&&y>34&&y<54)y=y<44?33:56;chips+=`<div class="pbet" style="${pc(x,y)}"><i></i>${fmt(s.bet)}</div>`}
       if(i===S.button){let x,y;if(k===0){x=CX+17;y=CY+RY*.56}else if(dy<-.6){x=sx-15;y=sy+9}else if(Math.abs(dx)>.6){x=sx-dx*8;y=sy+13}else{x=sx-(dx>=0?1:-1)*15;y=sy-9}chips+=`<div class="dbtn" style="${pc(x,y)}">D</div>`}
       if(k===0&&me>=0)return;
-      const cards=S.shown&&S.shown[i]?S.shown[i].map(c=>cardHTML(c,'')).join(''):s.folded?'':backHTML('')+backHTML('');
+      const cards=S.shown&&S.shown[i]?S.shown[i].map(c=>cardHTML(c,'')).join(''):s.folded?'':backHTML(deal?'deal':'')+backHTML(deal?'deal':'');
       const won=S.result&&S.result.winners.includes(i);const emo=P[s.uid]?.emote&&now-P[s.uid].emote.ts<4000?`<span class="emo">${esc(P[s.uid].emote.t)}</span>`:'';
-      seats+=`<div class="pseat ${S.toAct===i?'turn':''} ${s.folded?'out':''} ${won?'won':''}" style="${pc(sx,sy)}"><div class="pcards">${cards}</div><div class="pbox"><span class="pname">${esc(S.names[s.uid]||'?')}${P[s.uid]?.online===false?' · 끊김':''}</span><span class="pstk">${s.allIn&&!s.stack?'올인':fmt(s.stack)}</span></div><div class="pact">${s.act||''}</div>${S.toAct===i?`<span class="peq">${left}s</span>`:''}${emo}</div>`});
-    const slots=[];for(let i=0;i<5;i++)slots.push(S.board[i]!==undefined?cardHTML(S.board[i]):'<div class="card slot"></div>');
+      seats+=`<div class="pseat ${S.toAct===i?'turn':''} ${s.folded?'out':''} ${won?'won':''}" style="${pc(sx,sy)}"><div class="ptop">${avHTML(S.names[s.uid]||'?')}<div class="pcards">${cards}</div></div><div class="pbox"><span class="pname">${esc(S.names[s.uid]||'?')}${P[s.uid]?.online===false?' · 끊김':''}</span><span class="pstk">${s.allIn&&!s.stack?'올인':fmt(s.stack)}</span></div><div class="pact">${s.act||''}</div>${S.toAct===i?`<span class="peq">${left}s</span>`:''}${emo}</div>`});
+    const slots=[];for(let i=0;i<5;i++)slots.push(S.board[i]!==undefined?cardHTML(S.board[i],i>=b0?`flip fd${i-b0}`:''):'<div class="card slot"></div>');
     const pot=S.seats.reduce((a,s)=>a+s.total,0);const mine=me>=0?S.seats[me]:null;const hole=MP.hole&&MP.hole.hand===S.handNo?MP.hole.cards:null;
     const made=hole&&S.board.length>=3?describe(hole,S.board).text:hole?keyOf(hole[0],hole[1]):'';
     const myEmo=P[MP.net.uid]?.emote&&now-P[MP.net.uid].emote.ts<4000?`<span class="emo">${esc(P[MP.net.uid].emote.t)}</span>`:'';
     h+=`<div class="ptable mpt"><div class="oval"></div><div class="center"><div class="potline"><span class="chip">팟 <em>${fmt(pot)}</em></span></div><div class="board">${slots.join('')}</div></div>
       <div>${seats}${chips}</div>
-      ${mine?`<div class="phero ${S.toAct===me?'turn':''} ${mine.folded?'out':''} ${S.result&&S.result.winners.includes(me)?'won':''}"><div class="cards">${hole?hole.map(c=>cardHTML(c,'big')).join(''):''}</div><div class="pbox"><span class="pname">${esc(S.names[mine.uid]||'나')}</span><span class="pstk">${fmt(mine.stack)}</span>${S.toAct===me?`<span class="peq hero">${left}s</span>`:''}</div><div class="made">${made}</div>${myEmo}</div>`:`<div class="phero"><div class="pbox"><span class="ctx">관전 중 · 다음 핸드부터 참가</span></div></div>`}</div>
+      ${mine?`<div class="phero ${S.toAct===me?'turn':''} ${mine.folded?'out':''} ${S.result&&S.result.winners.includes(me)?'won':''}"><div class="cards">${hole?hole.map(c=>cardHTML(c,'big'+(deal?' deal':''))).join(''):''}</div><div class="pbox"><span class="pname">${esc(S.names[mine.uid]||'나')}</span><span class="pstk">${fmt(mine.stack)}</span>${S.toAct===me?`<span class="peq hero">${left}s</span>`:''}</div><div class="made">${made}</div>${myEmo}</div>`:`<div class="phero"><div class="pbox"><span class="ctx">관전 중 · 다음 핸드부터 참가</span></div></div>`}</div>
       <div class="ticker">${S.result?S.result.title:S.toAct>=0?`<strong>${esc(S.names[S.seats[S.toAct].uid])}</strong> 차례`:'카드를 여는 중…'}</div>`;
     if(mine&&S.toAct===me&&S.phase==='play'){const toCall=S.currentBet-mine.bet,maxTo=mine.bet+mine.stack,minTo=Math.min(maxTo,S.currentBet+S.minRaise),bbA=S.blinds[1];
       if(!MP.sel||MP.sel<minTo||MP.sel>maxTo)MP.sel=minTo;
