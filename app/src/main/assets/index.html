@@ -362,6 +362,13 @@ h1{font-size:20px;white-space:nowrap}
 .acts .btn small{white-space:nowrap}
 .help summary{cursor:pointer;text-decoration:underline}
 .help p{margin:6px 0 0}
+/* ---- multiplayer: turn timer ---- */
+.pav.timer::before{content:"";position:absolute;inset:-6px;border-radius:50%;background:conic-gradient(var(--brass) calc(var(--p)*1%),rgba(0,0,0,.45) 0);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px))}
+.pav.timer.low::before{background:conic-gradient(var(--bad) calc(var(--p)*1%),rgba(0,0,0,.45) 0)}
+.tbar{width:100%;height:4px;border-radius:2px;background:rgba(0,0,0,.45);overflow:hidden;margin-top:3px}
+.tbar i{display:block;height:100%;background:var(--brass)}
+.tbar.low i{background:var(--bad)}
+.ptable.mpt{width:min(100%,480px,calc((100dvh - 330px)*10/13))}
 /* ---- verdict badge and EV loss ---- */
 .fb .top{align-items:center}
 .vbadge{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font:800 13px/1 var(--f-body);color:#06241a;background:var(--muted)}
@@ -967,7 +974,7 @@ function cardHTML(c,cls=''){return `<div class="card s-${cs(c)} ${cls}" aria-lab
 const backHTML=cls=>`<div class="card back ${cls}"></div>`;
 /* seat avatar: first letter of the name on a colour derived from the name */
 const avHue=n=>{let h=0;for(const ch of String(n))h=(h*31+ch.codePointAt(0))%360;return h};
-const avHTML=n=>`<span class="pav" style="--h:${avHue(n)}" aria-hidden="true">${esc(String(n).trim().slice(0,1)||'?')}</span>`;
+const avHTML=(n,pct)=>`<span class="pav ${pct===undefined?'':'timer'+(pct<25?' low':'')}" style="--h:${avHue(n)}${pct===undefined?'':`;--p:${pct}`}" aria-hidden="true">${esc(String(n).trim().slice(0,1)||'?')}</span>`;
 /* what has already been animated, so a re-render does not replay the deal or the board flip */
 const AN={hand:-1,bh:-1,board:0,mph:-1,mbh:-1,mboard:0};
 function render(){syncNP();if(G.hu)renderHUBanner();
@@ -1715,10 +1722,17 @@ async function mpOnAction(list){if(!MP.isHost||!list)return;for(const[k,a]of Obj
 /* ---- client ---- */
 const MP={net:null,room:null,isHost:false,state:null,players:null,hole:null,unsub:[],sel:0,err:''};
 async function mpConnect(){if(MP.net)return MP.net;const cfg=mpCfg();if(!cfg)throw new Error('설정 없음');
-  MP.net=cfg.local?makeLocalNet():await makeFirebaseNet(cfg);MPH.now=MP.net.now;return MP.net}
+  MP.net=cfg.local?makeLocalNet():await makeFirebaseNet(cfg);MPH.now=MP.net.now;mpCleanup(MP.net);return MP.net}
 function mpCode(){const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return Array.from({length:4},()=>A[Math.random()*A.length|0]).join('')}
+const MPHOSTED_KEY='holdem-mphosted';
+async function mpCleanup(N){let list;try{list=JSON.parse(localStorage.getItem(MPHOSTED_KEY))||[]}catch(e){list=[]}
+  const now=Date.now(),cur=localStorage.getItem('holdem-mproom'),keep=[];
+  for(const r of list){if(now-r.ts<864e5||r.code===cur){keep.push(r);continue}
+    try{await N.set(`hands/${r.code}`,null);await N.set(`rooms/${r.code}`,null)}catch(e){if(now-r.ts<30*864e5)keep.push(r)}}
+  try{localStorage.setItem(MPHOSTED_KEY,JSON.stringify(keep))}catch(e){}}
 async function mpCreate(){const N=await mpConnect();let code;for(let i=0;i<6;i++){code=mpCode();if(!(await N.get(`rooms/${code}/meta`)))break}
   await N.set(`rooms/${code}/meta`,{host:N.uid,created:N.now()});
+  try{const l=JSON.parse(localStorage.getItem(MPHOSTED_KEY))||[];l.push({code,ts:Date.now()});localStorage.setItem(MPHOSTED_KEY,JSON.stringify(l))}catch(e){}
   MP.state={phase:'lobby',order:[],stacks:{},buyins:{},names:{},rebuyDone:{},blinds:[500,1000],stack:30000,timer:30,handNo:0,seats:[],board:[],log:[],running:false};
   await mpJoin(code,true)}
 async function mpJoin(code,asHost){const N=await mpConnect();code=String(code||'').trim().toUpperCase();
@@ -1769,7 +1783,7 @@ function mpRender(){const el=$('mpMode');if(!el||el.hidden)return;let h='';const
      ${S.note?`<p class="ctx">${S.note}</p>`:''}</div>`}
   else{const N=S.seats.length;const meIdx=me>=0?me:0;const at=k=>{const t=(90+k*360/N)*Math.PI/180;return[Math.cos(t),Math.sin(t)]};const pc=(x,y)=>`left:${x.toFixed(1)}%;top:${y.toFixed(1)}%`;
     const CX=50,CY=45,RX=N>=7?38:40,RY=37;let seats='',chips='';
-    const now=MP.net.now(),left=S.toAct>=0?Math.max(0,Math.ceil((S.deadline-now)/1000)):0;
+    const now=MP.net.now(),left=S.toAct>=0?Math.max(0,Math.ceil((S.deadline-now)/1000)):0,leftPct=Math.max(0,Math.min(100,Math.round(left/(S.timer||30)*100)));
     const gotHole=MP.hole&&MP.hole.hand===S.handNo,deal=gotHole&&AN.mph!==S.handNo&&!S.board.length;if(gotHole)AN.mph=S.handNo;
     const b0=AN.mbh===S.handNo?AN.mboard:0;AN.mbh=S.handNo;AN.mboard=S.board.length;
     S.seats.forEach((s,i)=>{const k=(i-meIdx+N)%N;const[dx,dy]=at(k);const sx=CX+dx*RX,sy=CY+dy*RY;
@@ -1778,21 +1792,24 @@ function mpRender(){const el=$('mpMode');if(!el||el.hidden)return;let h='';const
       if(k===0&&me>=0)return;
       const cards=S.shown&&S.shown[i]?S.shown[i].map(c=>cardHTML(c,'')).join(''):s.folded?'':backHTML(deal?'deal':'')+backHTML(deal?'deal':'');
       const won=S.result&&S.result.winners.includes(i);const emo=P[s.uid]?.emote&&now-P[s.uid].emote.ts<4000?`<span class="emo">${esc(P[s.uid].emote.t)}</span>`:'';
-      seats+=`<div class="pseat ${S.toAct===i?'turn':''} ${s.folded?'out':''} ${won?'won':''}" style="${pc(sx,sy)}"><div class="ptop">${avHTML(S.names[s.uid]||'?')}<div class="pcards">${cards}</div></div><div class="pbox"><span class="pname">${esc(S.names[s.uid]||'?')}${P[s.uid]?.online===false?' · 끊김':''}</span><span class="pstk">${s.allIn&&!s.stack?'올인':fmt(s.stack)}</span></div><div class="pact">${s.act||''}</div>${S.toAct===i?`<span class="peq">${left}s</span>`:''}${emo}</div>`});
+      seats+=`<div class="pseat ${S.toAct===i?'turn':''} ${s.folded?'out':''} ${won?'won':''}" style="${pc(sx,sy)}"><div class="ptop">${avHTML(S.names[s.uid]||'?',S.toAct===i?leftPct:undefined)}<div class="pcards">${cards}</div></div><div class="pbox"><span class="pname">${esc(S.names[s.uid]||'?')}${P[s.uid]?.online===false?' · 끊김':''}</span><span class="pstk">${s.allIn&&!s.stack?'올인':fmt(s.stack)}</span></div><div class="pact">${s.act||''}</div>${S.toAct===i?`<span class="peq">${left}s</span>`:''}${emo}</div>`});
     const slots=[];for(let i=0;i<5;i++)slots.push(S.board[i]!==undefined?cardHTML(S.board[i],i>=b0?`flip fd${i-b0}`:''):'<div class="card slot"></div>');
     const pot=S.seats.reduce((a,s)=>a+s.total,0);const mine=me>=0?S.seats[me]:null;const hole=MP.hole&&MP.hole.hand===S.handNo?MP.hole.cards:null;
     const made=hole&&S.board.length>=3?describe(hole,S.board).text:hole?keyOf(hole[0],hole[1]):'';
     const myEmo=P[MP.net.uid]?.emote&&now-P[MP.net.uid].emote.ts<4000?`<span class="emo">${esc(P[MP.net.uid].emote.t)}</span>`:'';
     h+=`<div class="ptable mpt"><div class="oval"></div><div class="center"><div class="potline"><span class="chip">팟 <em>${fmt(pot)}</em></span></div><div class="board">${slots.join('')}</div></div>
       <div>${seats}${chips}</div>
-      ${mine?`<div class="phero ${S.toAct===me?'turn':''} ${mine.folded?'out':''} ${S.result&&S.result.winners.includes(me)?'won':''}"><div class="cards">${hole?hole.map(c=>cardHTML(c,'big'+(deal?' deal':''))).join(''):''}</div><div class="pbox"><span class="pname">${esc(S.names[mine.uid]||'나')}</span><span class="pstk">${fmt(mine.stack)}</span>${S.toAct===me?`<span class="peq hero">${left}s</span>`:''}</div><div class="made">${made}</div>${myEmo}</div>`:`<div class="phero"><div class="pbox"><span class="ctx">관전 중 · 다음 핸드부터 참가</span></div></div>`}</div>
+      ${mine?`<div class="phero ${S.toAct===me?'turn':''} ${mine.folded?'out':''} ${S.result&&S.result.winners.includes(me)?'won':''}"><div class="cards">${hole?hole.map(c=>cardHTML(c,'big'+(deal?' deal':''))).join(''):''}</div><div class="pbox"><span class="pname">${esc(S.names[mine.uid]||'나')}</span><span class="pstk">${fmt(mine.stack)}</span>${S.toAct===me?`<span class="peq hero">${left}s</span>`:''}</div>${S.toAct===me?`<div class="tbar ${leftPct<25?'low':''}"><i style="width:${leftPct}%"></i></div>`:''}<div class="made">${made}</div>${myEmo}</div>`:`<div class="phero"><div class="pbox"><span class="ctx">관전 중 · 다음 핸드부터 참가</span></div></div>`}</div>
       <div class="ticker">${S.result?S.result.title:S.toAct>=0?`<strong>${esc(S.names[S.seats[S.toAct].uid])}</strong> 차례`:'카드를 여는 중…'}</div>`;
     if(mine&&S.toAct===me&&S.phase==='play'){const toCall=S.currentBet-mine.bet,maxTo=mine.bet+mine.stack,minTo=Math.min(maxTo,S.currentBet+S.minRaise),bbA=S.blinds[1];
       if(!MP.sel||MP.sel<minTo||MP.sel>maxTo)MP.sel=minTo;
       const pre=(S.street===0?[[2.5,'2.5BB',2.5*bbA],[3,'3BB',3*bbA]]:[[0,'½팟',S.currentBet+(pot+toCall)/2],[0,'⅔팟',S.currentBet+(pot+toCall)*2/3],[0,'팟',S.currentBet+pot+toCall]]).map(([_,l,v])=>[l,Math.min(maxTo,Math.max(minTo,Math.round(v/500)*500))]).concat([['올인',maxTo]]);
-      h+=`<section class="controls mpc">${maxTo>S.currentBet?`<div class="raisepanel"><div class="sizes">${pre.map(([l,v])=>`<button class="size ${l==='올인'?'allin':''}" data-v="${v}" aria-pressed="${v===MP.sel}">${l}<small>${fmt(v)}</small></button>`).join('')}</div>
-        <div class="slider"><input type="range" id="mpAmt" min="${minTo}" max="${maxTo}" step="500" value="${MP.sel}"><output>${fmt(MP.sel)}</output></div></div>`:''}
-        <div class="acts"><button class="btn fold" id="mpF">폴드</button><button class="btn" id="mpC">${toCall?`콜 ${fmt(Math.min(toCall,mine.stack))}`:'체크'}</button><button class="btn prim" id="mpR" ${maxTo>S.currentBet?'':'disabled'}>${MP.sel>=maxTo?'올인':S.currentBet?'레이즈':'벳'} ${fmt(MP.sel)}</button></div></section>`}
+      const canR=maxTo>S.currentBet,verb=MP.sel>=maxTo?'올인':S.currentBet?'레이즈':'벳';if(!canR)MP.raising=false;
+      h+=MP.raising?`<section class="controls mpc raising"><div class="raisepanel"><div class="sizes">${pre.map(([l,v])=>`<button class="size ${l==='올인'?'allin':''}" data-v="${v}" aria-pressed="${v===MP.sel}">${l}<small>${fmt(v)}</small></button>`).join('')}</div>
+        <div class="slider"><button class="step" id="mpMinus" type="button" aria-label="줄이기">−</button><input type="range" id="mpAmt" min="${minTo}" max="${maxTo}" step="500" value="${MP.sel}" aria-label="레이즈 금액"><button class="step" id="mpPlus" type="button" aria-label="늘리기">+</button></div>
+        <div class="rpfoot"><button class="btn back" id="mpCancel" type="button">취소</button><output>${fmt(MP.sel)} · ${Math.round(MP.sel/bbA*10)/10}BB</output><button class="btn prim ${MP.armed?'armed':''}" id="mpR" type="button">${MP.armed?'한 번 더 누르면 올인':`${verb} ${fmt(MP.sel)}`}<small>확인</small></button></div></div></section>`
+       :`<section class="controls mpc"><div class="acts"><button class="btn fold" id="mpF">폴드</button><button class="btn" id="mpC">${toCall?`콜<small>${fmt(Math.min(toCall,mine.stack))}</small>`:'체크'}</button><button class="btn prim" id="mpRopen" ${canR?'':'disabled'}>${minTo>=maxTo?'올인':S.currentBet?'레이즈':'벳'}<small>${canR?'크기 고르기':'불가'}</small></button></div></section>`}
+    else MP.raising=false;
     h+=`<div class="emobar">${MP_EMOTES.map(e=>`<button class="size" data-e="${e}">${e}</button>`).join('')}</div>`;
     if(mine&&!mine.stack&&S.phase!=='play'||me<0&&(S.stacks[MP.net.uid]===0))h+=`<button class="btn" id="mpRebuy">리바인 +${fmt(S.stack)}</button>`;
     if(MP.isHost)h+=`<div class="mpbtns"><button class="link" id="mpPause">${S.running?'이번 핸드 끝나고 멈추기':'게임 계속'}</button></div>`;
@@ -1803,11 +1820,14 @@ function mpRender(){const el=$('mpMode');if(!el||el.hidden)return;let h='';const
   if(q('mpStart')){const upd=async()=>{S.blinds=q('mpBl').value.split(',').map(Number);S.stack=+q('mpSt').value;S.timer=+q('mpTm').value;S.order.forEach(u=>{if(!S.handNo)S.stacks[u]=S.stack})};
     ['mpBl','mpSt','mpTm'].forEach(id=>q(id).onchange=async()=>{await upd();await mpPublish();mpRender()});q('mpStart').onclick=async()=>{await upd();mpHostCmd('start')}}
   if(q('mpPause'))q('mpPause').onclick=()=>mpHostCmd(S.running?'pause':'start');
-  el.querySelectorAll('.raisepanel .size').forEach(b=>b.onclick=()=>{MP.sel=+b.dataset.v;mpRender()});
-  if(q('mpAmt'))q('mpAmt').oninput=e=>{MP.sel=+e.target.value;mpRender()};
+  el.querySelectorAll('.raisepanel .size').forEach(b=>b.onclick=()=>{MP.sel=+b.dataset.v;MP.armed=false;mpRender()});
+  if(q('mpAmt'))q('mpAmt').oninput=e=>{MP.sel=+e.target.value;MP.armed=false;mpRender()};
+  if(q('mpRopen'))q('mpRopen').onclick=()=>{MP.raising=true;MP.armed=false;mpRender()};
+  if(q('mpCancel'))q('mpCancel').onclick=()=>{MP.raising=false;MP.armed=false;mpRender()};
+  if(q('mpMinus')){const a=q('mpAmt'),step=d=>{MP.sel=Math.max(+a.min,Math.min(+a.max,MP.sel+d*500));MP.armed=false;mpRender()};q('mpMinus').onclick=()=>step(-1);q('mpPlus').onclick=()=>step(1)}
   let armed=false;
   if(q('mpF'))q('mpF').onclick=()=>mpAct('fold');if(q('mpC'))q('mpC').onclick=()=>mpAct(S.currentBet>S.seats[me].bet?'call':'check');
-  if(q('mpR'))q('mpR').onclick=()=>{const maxTo=S.seats[me].bet+S.seats[me].stack;if(MP.sel>=maxTo&&!MP.armed){MP.armed=true;q('mpR').textContent='한 번 더 누르면 올인';q('mpR').classList.add('armed');setTimeout(()=>{MP.armed=false},2500);return}MP.armed=false;mpAct('raise',MP.sel)};
+  if(q('mpR'))q('mpR').onclick=()=>{const maxTo=S.seats[me].bet+S.seats[me].stack;if(MP.sel>=maxTo&&!MP.armed){MP.armed=true;mpRender();setTimeout(()=>{if(MP.armed){MP.armed=false;mpRender()}},2500);return}MP.armed=false;MP.raising=false;mpAct('raise',MP.sel)};
   el.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>MP.net.update(`rooms/${MP.room}/players/${MP.net.uid}`,{emote:{t:b.dataset.e,ts:MP.net.now()}}));
   if(q('mpRebuy'))q('mpRebuy').onclick=()=>MP.net.update(`rooms/${MP.room}/players/${MP.net.uid}`,{rebuy:MP.net.now()})}
 setInterval(()=>{if(MP.state&&MP.state.phase==='play'&&!$('mpMode').hidden&&!document.activeElement?.matches?.('#mpAmt'))mpRender()},1000);

@@ -26,8 +26,8 @@ async def main():
                 if await pg.locator('#mpF').count():
                     r=random.random()
                     if r<.15: await pg.click('#mpF')
-                    elif r<.3 and await pg.locator('#mpMode .raisepanel .size').count():
-                        n=await pg.locator('#mpMode .raisepanel .size').count();await pg.locator('#mpMode .raisepanel .size').nth(random.randrange(n)).click();await pg.wait_for_timeout(50)
+                    elif r<.3 and await pg.locator('#mpRopen:not([disabled])').count():
+                        await pg.click('#mpRopen');await pg.wait_for_timeout(60);n=await pg.locator('#mpMode .raisepanel .size').count();await pg.locator('#mpMode .raisepanel .size').nth(random.randrange(n)).click();await pg.wait_for_timeout(50)
                         await pg.click('#mpR');await pg.wait_for_timeout(30)
                         if await pg.locator('#mpR.armed').count(): await pg.click('#mpR')
                     else: await pg.click('#mpC')
