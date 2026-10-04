@@ -46,7 +46,7 @@ h1 span{color:var(--brass)}
 .card .s{font-size:calc(var(--w)*.42);font-family:var(--f-body)}
 .card.sm{--w:24px;border-radius:4px}
 .card.big{--w:62px}
-.card.back{background:repeating-linear-gradient(45deg,#7a2a22 0 4px,#8f3429 4px 8px);border-color:#5a1c16}
+.card.back{background:repeating-linear-gradient(45deg,var(--back1,#7a2a22) 0 4px,var(--back2,#8f3429) 4px 8px);border-color:rgba(0,0,0,.4)}
 .card.slot{background:rgba(0,0,0,.18);border:1px dashed var(--line);box-shadow:none}
 .card.s-0{color:var(--sp)}.card.s-1{color:var(--ht)}.card.s-2{color:var(--dm)}.card.s-3{color:var(--cl)}
 .card.win{outline:2px solid var(--brass);outline-offset:1px}
@@ -113,6 +113,21 @@ footer{font-size:11px;color:var(--muted)}
 .repbtns{display:flex;gap:6px;flex-wrap:wrap}
 .replist{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
 .replist div{border-top:1px solid var(--line);padding-top:4px}
+.hctl{display:flex;gap:10px;flex-wrap:wrap}
+.dcard{appearance:none;font:inherit;color:var(--ink);text-align:left;background:linear-gradient(135deg,#1d3b2f,var(--panel));border:1px solid var(--brass);border-radius:14px;padding:12px 14px;display:grid;grid-template-columns:1fr auto;gap:2px 10px;cursor:pointer}
+.dcard:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.dtop{display:flex;flex-direction:column}
+.dstat{font-size:12px;color:var(--muted)}
+.dstreak{grid-row:1/3;grid-column:2;align-self:center;text-align:right;font-size:12px;color:var(--muted)}
+.dstreak b{display:block;font-family:var(--f-display);font-size:30px;color:var(--brass);line-height:1}
+.rrow{display:flex;justify-content:space-between;align-items:baseline}
+.rrow strong{font-family:var(--f-mono);color:var(--brass)}
+.rdelta.pos{color:var(--good)}.rdelta.neg{color:var(--bad)}
+.welcome{position:fixed;inset:0;background:rgba(5,15,11,.82);z-index:20;display:grid;place-items:center;padding:16px}
+.welcome[hidden]{display:none}
+.wbox{background:var(--panel);border:1px solid var(--brass);border-radius:18px;padding:20px;width:min(100%,380px);display:flex;flex-direction:column;gap:10px}
+.wbox h2{font-family:var(--f-display);font-size:30px;margin:0;color:var(--brass)}
+.wbox p{margin:0 0 4px}
 /* ---- action bar ---- */
 .controls{position:sticky;bottom:0;z-index:5;background:linear-gradient(to top,var(--room) 82%,transparent);padding-top:10px;padding-bottom:calc(6px + env(safe-area-inset-bottom,0px))}
 .acts .btn{min-height:58px}
@@ -310,8 +325,9 @@ details.more[open]{display:flex;flex-direction:column;gap:8px}
 <div class="wrap">
   <header>
     <h1>홀덤의 <span>바이블</span></h1>
-    <label class="npick" id="npLabel" for="npSel">인원 <select id="npSel"></select> · 블라인드 500/1,000</label>
+    <span class="hctl"><label class="npick" id="npLabel" for="npSel">인원 <select id="npSel"></select> · 블라인드 500/1,000</label><label class="npick" for="themeSel">테이블 <select id="themeSel"></select></label></span>
   </header>
+  <div id="welcome" class="welcome" hidden></div>
   <div class="setrow"><button class="link" id="setBtn" aria-expanded="false" aria-controls="settings">설정 · 신고 목록</button></div>
   <section class="settings" id="settings" hidden>
     <div class="sgroup">
@@ -837,7 +853,7 @@ function heroAct(t){const w=G.heroWait;if(!w||G.paused)return;const p=w.p;
     clearTimeout(G.armT);G.armT=setTimeout(()=>{G.allinArmed=false;if(G.heroWait)setupControls(G.heroWait.p,true)},2500);return}
   G.allinArmed=false;closeRaise();
   const gr=grade(G.advice,act,p);gr.lv=tierLabel(G.advice,gr,act);
-  const st=G.stats;st.lv=st.lv||LV0();st.dec++;st[gr.g]++;st.lv[gr.lv]++;
+  const st=G.stats;st.lv=st.lv||LV0();st.dec++;st[gr.g]++;st.lv[gr.lv]++;gr.dr=rateDecision(gr.lv);
   const label=act.t==='raise'?(gr.a==='bet'?'벳 ':'레이즈 ')+fmt(act.to):ALABEL[act.t];
   const street=['프리플랍','플랍','턴','리버'][G.street],bestLabel=G.advice.bestOpt?G.advice.bestOpt.label:ALABEL[G.advice.best];
   const fb={A:G.advice,gr,label,street,chat:[],hand:G.hand,ctx:buildCtx(G.advice,gr,label,p)};
@@ -846,7 +862,7 @@ function heroAct(t){const w=G.heroWait;if(!w||G.paused)return;const p=w.p;
   if(G.learnPause&&gr.g==='bad'){G.paused={act,fb,p,w};lockControls('실수 확인 중');renderCoach();$('coach').scrollIntoView({behavior:'smooth',block:'start'});return}
   commitAct(w,p,act)}
 function commitAct(w,p,act){G.paused=null;huLearnAction(p,act);trackPre(p,act);G.heroWait=null;lockControls('상대 차례…');renderCoach();w.resolve(act)}
-function retryAct(){const P=G.paused;if(!P)return;G.paused=null;const st=G.stats;st.dec--;st[P.fb.gr.g]--;st.lv[P.fb.gr.lv]--;G.handFb.shift();G.decLog.pop();
+function retryAct(){const P=G.paused;if(!P)return;G.paused=null;const st=G.stats;st.dec--;st[P.fb.gr.g]--;st.lv[P.fb.gr.lv]--;{const R0=rget();R0.r-=P.fb.gr.dr||0;R0.n--;jset(RKEY,R0)}G.handFb.shift();G.decLog.pop();
   setupControls(P.p);renderCoach();render();$('controls').scrollIntoView({behavior:'smooth',block:'end'})}
 function continueAct(){const P=G.paused;if(!P)return;commitAct(P.w,P.p,P.act)}
 /* ===== render ===== */
@@ -855,7 +871,7 @@ const backHTML=cls=>`<div class="card back ${cls}"></div>`;
 function render(){syncNP();if(G.hu)renderHUBanner();
   const hero=G.players[0];
   const net=hero.stack+(G.result?0:hero.total)-G.invested;
-  $('meta').innerHTML=`<div>핸드<b>#${G.hand}</b></div><div>내 스택<b>${fmt(hero.stack)}</b></div><div>손익<b class="${net>0?'pos':net<0?'neg':''}">${net>0?'+':''}${fmt(net)}</b></div><div>리바인 잔여<b>${fmt(G.rebuyLeft)}</b></div>`;
+  $('meta').innerHTML=`<div>핸드<b>#${G.hand}</b></div><div>내 스택<b>${fmt(hero.stack)}</b></div><div>손익<b class="${net>0?'pos':net<0?'neg':''}">${net>0?'+':''}${fmt(net)}</b></div><div>리바인 잔여<b>${fmt(G.rebuyLeft)}</b></div><div>레이팅<b>${ratingText()}</b></div>`;
   const winCards=new Set();if(G.showdown&&G.result)G.winners.forEach(i=>best5([...G.players[i].cards,...G.board]).forEach(c=>winCards.add(c)));
   /* seats around an oval: hero at the bottom, the rest clockwise (to the hero's left first) */
   const N=NPN(),CX=50,CY=45,RX=N>=7?38:40,RY=37;const at=k=>{const t=(90+k*360/N)*Math.PI/180;return[Math.cos(t),Math.sin(t)]};
@@ -902,7 +918,7 @@ function fbHTML(f,isLatest){
   const {A,gr,label,street}=f;const V=LVN[gr.lv]||{good:'좋은 선택',ok:'무난',bad:'실수'}[gr.g];
   const bestLbl=A.bestOpt?A.bestOpt.label:ALABEL[A.best];
     const ranges=A.ranges.map(r=>`${r.name}: ${r.desc}`).join('<br>');
-  return `<div class="fb ${gr.g} lv-${gr.lv||''}"><div class="top"><span class="verdict">${V}</span><span class="ctx">${street} · ${A.pos} · 내 선택 <strong>${label}</strong> · 추천 <strong>${bestLbl}</strong></span></div>
+  return `<div class="fb ${gr.g} lv-${gr.lv||''}"><div class="top"><span class="verdict">${V}</span><span class="ctx">${street} · ${A.pos} · 내 선택 <strong>${label}</strong> · 추천 <strong>${bestLbl}</strong>${gr.dr!==undefined?` · <span class="rdelta ${gr.dr>=0?'pos':'neg'}">레이팅 ${gr.dr>=0?'+':''}${gr.dr}</span>`:''}</span></div>
    <p>${A.reason}</p>
    ${gr.notes.map(n=>`<div class="note">${n}</div>`).join('')}
    ${gr.loss>0&&A.kind==='ev'?`<p class="lossline">최선보다 <strong>${bb(gr.loss)}</strong> 손해예요.</p>`:''}
@@ -1248,8 +1264,10 @@ function money(n,bb){return n.unit?fmt(bb*n.unit):(Math.round(bb*10)/10)+'BB'}
 function storyMap(){const p=sprog();LV=null;
   const tTot=TUT.stages.reduce((s,x)=>s+(p[x.id]||0),0),tot=STORY.stages.reduce((s,x)=>s+(p[x.id]||0),0);
   $('storyMode').innerHTML=`<div class="smap">
+   <div class="rrow"><span class="ctx">판단 레이팅</span><strong>${ratingText()}</strong></div>
+   ${dailyCard()}
    <div class="shdr"><h2>튜토리얼 · ${TUT.title}</h2><span class="stot">${tTot} / ${TUT.stages.length*3} ★</span></div>
-   <p class="ctx">홀덤이 처음이라면 여기서 시작하세요. 룰과 족보를 배우고 바로 문제로 연습합니다. 정답률 90% ★3 · 70% ★2 · 50% ★1.</p>
+   <p class="ctx">홀덤이 처음이라면 여기서 시작하세요. 룰과 족보를 배우고 바로 문제로 연습합니다. 정답률 90% ★3 · 70% ★2 · 50% ★1. 이미 안다면 <button class="link" id="placeBtn">실력 확인 6문제</button>로 건너뛸 수 있어요.</p>
    <div class="sgrid">${TUT.stages.map((s,i)=>{const open=i===0||(p[TUT.stages[i-1].id]||0)>=1;const got=p[s.id]||0;
      return `<button class="scard tut" data-t="${s.id}" ${open?'':'disabled'}><span class="snum">${i+1}</span><span class="stitle">${s.title}</span><span class="stag">${s.tag}</span><span class="sstars ${got?'got':''}">${open?STAR(got):'잠김'}</span></button>`}).join('')}</div>
    <div class="shdr"><h2>${STORY.chapter}장 · ${STORY.title}</h2><span class="stot">${tot} / ${STORY.stages.length*3} ★</span></div>
@@ -1257,7 +1275,8 @@ function storyMap(){const p=sprog();LV=null;
    <div class="sgrid">${STORY.stages.map((s,i)=>{const open=i===0||(p[STORY.stages[i-1].id]||0)>=1;const got=p[s.id]||0;
      return `<button class="scard ${s.real?'boss':''}" data-id="${s.id}" ${open?'':'disabled'}><span class="snum">${s.id}</span><span class="stitle">${s.title}</span><span class="stag">${s.tag}</span><span class="sstars ${got?'got':''}">${open?STAR(got):'잠김'}</span></button>`}).join('')}</div></div>`;
   $('storyMode').querySelectorAll('.scard[data-id]').forEach(b=>b.onclick=()=>startStage(+b.dataset.id));
-  $('storyMode').querySelectorAll('.scard[data-t]').forEach(b=>b.onclick=()=>startLesson(b.dataset.t))}
+  $('storyMode').querySelectorAll('.scard[data-t]').forEach(b=>b.onclick=()=>startLesson(b.dataset.t));
+  $('dailyBtn').onclick=()=>startLesson('daily');$('placeBtn').onclick=()=>startLesson('place')}
 function startStage(id){LV=null;const s=STORY.stages.find(x=>x.id===id);SV={stage:s,node:s.start,picks:[],chosen:null};renderStage();window.scrollTo({top:0})}
 function renderStage(){const s=SV.stage,n=s.nodes[SV.node];const done=SV.chosen!==null;
   const hero=scards(n.hero),board=scards(n.board);const slots=[];for(let i=0;i<5;i++)slots.push(board[i]!==undefined?cardHTML(board[i]):'<div class="card slot"></div>');
@@ -1392,19 +1411,25 @@ function tutRanksIntro(){const ex=['Ah Kh Qh Jh Th','9s 8s 7s 6s 5s','Qc Qd Qh Q
   return `<p>위에서부터 강한 순서예요. 10개만 외우면 됩니다.</p><ol class="tranks">${ex.map((e,i)=>`<li><span class="tname">${CAT10[9-i]}</span>${row(C(e),'sm')}<span class="ctx">${TUT_HINT[9-i]}</span></li>`).join('')}</ol>`}
 /* ---- lesson runner ---- */
 let LV=null;
-function buildItems(st){const z=st.quiz;
+function buildItems(st){const z=st.quiz;if(st.special==='daily')return dailyItems();
   if(z.items)return shuf(z.items);
   if(z.gen)return Array.from({length:z.n},()=>GEN[z.gen]());
   const out=[];for(const[k,n]of z.mix){if(GEN[k])for(let i=0;i<n;i++)out.push(GEN[k]());else out.push(...shuf(TUT.stages.find(s=>s.id===k).quiz.items).slice(0,n))}return shuf(out)}
-function startLesson(id){const st=TUT.stages.find(s=>s.id===id);LV={st,items:null,i:0,ok:0,picked:null};renderLesson();window.scrollTo({top:0})}
-function renderLesson(){const st=LV.st,idx=TUT.stages.indexOf(st);let h=`<div class="sbar"><button class="link" id="sBack">← 스테이지 목록</button><span class="ctx">튜토리얼 ${idx+1} / ${TUT.stages.length}</span></div>
-  <div class="sstage"><div class="shdr"><h2>${idx+1}. ${st.title}</h2><span class="stag">${st.tag}</span></div>`;
+function startLesson(id){const st=id==='daily'?DAILY:id==='place'?PLACE:TUT.stages.find(s=>s.id===id);LV={st,items:null,i:0,ok:0,picked:null};renderLesson();window.scrollTo({top:0})}
+function renderLesson(){const st=LV.st,idx=TUT.stages.indexOf(st),sp=st.special;let h=`<div class="sbar"><button class="link" id="sBack">← 스테이지 목록</button><span class="ctx">${sp?st.tag:`튜토리얼 ${idx+1} / ${TUT.stages.length}`}</span></div>
+  <div class="sstage"><div class="shdr"><h2>${sp?'':idx+1+'. '}${st.title}</h2><span class="stag">${st.tag}</span></div>`;
   if(!LV.items){h+=`<div class="tintro">${st.intro==='__RANKS__'?tutRanksIntro():st.intro}</div><button class="btn prim" id="tStart">연습 시작<small>Enter</small></button>`}
   else if(LV.i<LV.items.length){const it=LV.items[LV.i],done=LV.picked!==null;
     h+=`<div class="tprog"><span>${LV.i+1} / ${LV.items.length}</span><span>맞힘 ${LV.ok}</span></div><div class="tq"><p class="situ">${it.q}</p>${it.show||''}</div>
       <div class="sopts">${it.options.map((o,j)=>`<button class="btn sopt ${done&&j===it.answer?'bestopt':''} ${done&&j===LV.picked?'picked':''}" data-j="${j}" ${done?'disabled':''}>${o}</button>`).join('')}</div>`;
     if(done){const right=LV.picked===it.answer;h+=`<div class="fb ${right?'good':'bad'}"><div class="top"><span class="verdict">${right?'정답':'오답'}</span>${right?'':`<span class="ctx">정답: ${it.options[it.answer]}</span>`}</div><p>${it.why||''}</p>${it.after||''}</div>
       <button class="btn prim" id="tNext">${LV.i+1<LV.items.length?'다음 문제':'결과 보기'}<small>Enter</small></button>`}}
+  else if(sp==='daily'){const before=dailyState();const s2=dailyRecord(LV.ok);
+    h+=`<div class="result"><h2>오늘의 문제 ${LV.ok} / ${LV.items.length}</h2><p><strong>${s2.streak}일 연속</strong> · 최고 ${s2.best}일</p><p class="ctx">${before.doneToday?`오늘 첫 기록(${before.score}/5)이 그대로 남아요. 다시 푼 건 연습이에요.`:'내일 또 새 문제가 나와요.'}</p>
+      <div class="sopts"><button class="btn" id="sRetry">다시 풀기</button><button class="btn prim" id="tList">목록으로<small>Enter</small></button></div></div>`}
+  else if(sp==='place'){const pass=LV.ok>=5;if(pass){const p=sprog();TUT.stages.forEach(t=>{p[t.id]=Math.max(p[t.id]||0,1)});ssave(p)}
+    h+=`<div class="result"><h2>${LV.items.length}문제 중 ${LV.ok}개</h2><p>${pass?'기본은 충분해요. 튜토리얼 레슨이 모두 열렸어요. 1장이나 헤즈업으로 가 보세요.':'튜토리얼부터 차근차근 하는 걸 추천해요. 족보와 룰을 확실히 해 두면 실전이 훨씬 쉬워져요.'}</p>
+      <div class="sopts">${pass?`<button class="btn prim" id="tCh1">1장으로<small>Enter</small></button>`:`<button class="btn prim" id="tT1">튜토리얼 시작<small>Enter</small></button>`}<button class="btn" id="tList">목록으로</button></div></div>`}
   else{const n=LV.items.length,acc=LV.ok/n,stars=acc>=.9?3:acc>=.7?2:acc>=.5?1:0;const p=sprog();const prev=p[st.id]||0;if(stars>prev){p[st.id]=stars;ssave(p)}
     const nx=TUT.stages[idx+1];
     h+=`<div class="result"><h2>${stars?`${STAR(stars)} ${n}문제 중 ${LV.ok}개 정답`:`${n}문제 중 ${LV.ok}개 · 다시 해 볼까요?`}</h2><p class="ctx">90% 이상 ★3 · 70% ★2 · 50% ★1. 문제는 매번 새로 나와요.</p>
@@ -1417,7 +1442,47 @@ function renderLesson(){const st=LV.st,idx=TUT.stages.indexOf(st);let h=`<div cl
   const rt=$('sRetry');if(rt)rt.onclick=()=>startLesson(st.id);
   const go=$('sGo');if(go)go.onclick=()=>startLesson(TUT.stages[idx+1].id);
   const c1=$('tCh1');if(c1)c1.onclick=()=>{LV=null;startStage(STORY.stages[0].id)};
-  ($('tNext')||$('tStart')||$('sGo')||$('tCh1'))?.focus({preventScroll:true})}
+  const tl=$('tList');if(tl)tl.onclick=()=>{LV=null;storyMap()};const t1=$('tT1');if(t1)t1.onclick=()=>startLesson('t1');
+  ($('tNext')||$('tStart')||$('sGo')||$('tCh1')||$('tT1')||$('tList'))?.focus({preventScroll:true})}
+
+/* ===== daily puzzle, placement, rating, table theme ===== */
+const todayKey=(o=0)=>{const d=new Date(Date.now()+o*864e5);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
+function seeded(seed){let a=seed>>>0;return()=>{a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function withSeed(seed,fn){const r=Math.random;Math.random=seeded(seed);try{return fn()}finally{Math.random=r}}
+const jget=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
+const jset=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+const DKEY='holdem-daily-v1';
+const DAILY={id:'daily',special:'daily',title:'오늘의 문제',tag:'매일 5문제',intro:'<p>매일 새로 나오는 5문제예요. 같은 날엔 누구나 같은 문제가 나오니 친구와 점수를 비교해 보세요. 하루에 한 번 풀면 연속 기록이 이어집니다.</p>',quiz:{}};
+const PLACE={id:'place',special:'place',title:'실력 확인',tag:'처음 시작',intro:'<p>홀덤을 이미 안다면 6문제로 확인해 보세요. 5개 이상 맞히면 튜토리얼 레슨이 모두 ★1로 열려서, 필요한 것만 골라 볼 수 있어요.</p>',quiz:{mix:[['name5',1],['best7',2],['winner',1],['t6',1],['t8',1]]}};
+function dailyItems(){const k=todayKey();let seed=0;for(const ch of k)seed=seed*31+ch.charCodeAt(0)|0;
+  return withSeed(seed,()=>[GEN.winner(),GEN.best7(),GEN.name5(),GEN.winner(),GEN.best7()])}
+function dailyState(){const d=jget(DKEY,{});const t=todayKey(),y=todayKey(-1);const streak=d.last===t||d.last===y?d.streak||0:0;return{d,t,doneToday:d.scores&&d.scores[t]!==undefined,score:d.scores?.[t],streak,best:d.best||0}}
+function dailyRecord(ok){const s=dailyState();if(s.doneToday)return s;const d=s.d;d.scores=d.scores||{};d.scores[s.t]=ok;
+  d.streak=d.last===todayKey(-1)?(d.streak||0)+1:1;d.last=s.t;d.best=Math.max(d.best||0,d.streak);jset(DKEY,d);return dailyState()}
+function dailyCard(){const s=dailyState();const k=new Date();
+  return `<button class="dcard" id="dailyBtn"><span class="dtop"><strong>오늘의 문제</strong><span class="ctx">${k.getMonth()+1}월 ${k.getDate()}일 · 5문제</span></span>
+   <span class="dstat">${s.doneToday?`오늘 ${s.score}/5 완료`:'아직 안 풀었어요'}</span><span class="dstreak"><b>${s.streak}</b>일 연속 · 최고 ${s.best}일</span></button>`}
+/* decision rating: moves only with the quality of your decisions, never with chips won */
+const RKEY='holdem-rating-v1';
+const rget=()=>Object.assign({r:1000,n:0,peak:1000},jget(RKEY,{}));
+const RTIERS=[[0,'브론즈'],[1000,'실버'],[1150,'골드'],[1300,'플래티넘'],[1450,'다이아'],[1600,'마스터']];
+const rankName=r=>RTIERS.filter(t=>r>=t[0]).pop()[1];
+function rateDecision(lv){const R=rget();const d=({best:6,good:3,inacc:-2,mistake:-6,blunder:-10}[lv]||0)*(R.n<30?1.5:1);
+  R.r=Math.max(0,Math.round(R.r+d));R.n++;R.peak=Math.max(R.peak,R.r);jset(RKEY,R);return Math.round(d)}
+const ratingText=()=>{const R=rget();return `${fmt(R.r)} · ${rankName(R.r)}`};
+/* table themes */
+const THEMES={green:['그린','#11402f','#17523c','#2a1d12','#7a2a22','#8f3429'],blue:['블루','#11304a','#1a4668','#1c1a17','#1f3f7a','#28508f'],red:['와인','#43141b','#5e1d26','#1e140e','#2d2d2d','#3d3d3d'],black:['블랙','#15191e','#232a32','#3a2a14','#7a5a1e','#8f6b25']};
+function applyTheme(k){const t=THEMES[k]||THEMES.green;const r=document.documentElement.style;r.setProperty('--felt',t[1]);r.setProperty('--felt-2',t[2]);r.setProperty('--rail',t[3]);r.setProperty('--back1',t[4]);r.setProperty('--back2',t[5]);try{localStorage.setItem('holdem-theme',k)}catch(e){}}
+/* first-run welcome */
+function showWelcome(){const w=$('welcome');w.hidden=false;
+  w.innerHTML=`<div class="wbox" role="dialog" aria-labelledby="wTitle"><h2 id="wTitle">홀덤의 바이블</h2><p>어디서부터 시작할까요?</p>
+   <button class="btn prim" id="w1">홀덤이 처음이에요<small>룰과 족보부터 배우기</small></button>
+   <button class="btn" id="w2">룰은 알아요<small>6문제로 실력 확인</small></button>
+   <button class="btn" id="w3">바로 실전<small>AI와 테이블에서 치기</small></button></div>`;
+  const done=()=>{w.hidden=true;try{localStorage.setItem('holdem-welcomed','1')}catch(e){}};
+  $('w1').onclick=()=>{done();setMode('story');startLesson('t1')};
+  $('w2').onclick=()=>{done();setMode('story');startLesson('place')};
+  $('w3').onclick=()=>{done();setMode('live')};$('w1').focus({preventScroll:true})}
 
 function setMode(m){
   if(m==='live')backToLive();
@@ -1430,6 +1495,7 @@ function setMode(m){
   if(m==='story'&&!SV.stage&&!LV)storyMap();try{localStorage.setItem('holdem-mode',m==='hu'?'live':m)}catch(e){}}
 document.querySelectorAll('.mode').forEach(b=>b.onclick=()=>setMode(b.dataset.m));
 
+{const ts=$('themeSel');ts.innerHTML=Object.entries(THEMES).map(([k,v])=>`<option value="${k}">${v[0]}</option>`).join('');let k='green';try{k=localStorage.getItem('holdem-theme')||'green'}catch(e){}ts.value=k;applyTheme(k);ts.onchange=()=>applyTheme(ts.value)}
 /* ===== settings ===== */
 function reportText(){const a=loadReports();if(!a.length)return'';
   return `[홀덤의 바이블 · 신고 ${a.length}건]\n\n`+a.map((r,i)=>`### 신고 ${i+1} · 핸드 #${r.hand} · ${r.street} · ${r.engine}\n내 선택: ${r.choice} → ${({good:'좋은 선택',ok:'무난',bad:'실수'})[r.verdict]||r.verdict} / 엔진 추천: ${r.recommended}\n메모: ${r.note}\n\n${r.context}\n${r.chat?`\n[코치와의 대화]\n${r.chat}\n`:''}`).join('\n---\n\n')}
@@ -1460,7 +1526,8 @@ document.addEventListener('keydown',e=>{if(e.metaKey||e.ctrlKey||e.altKey||e.tar
   else if(k==='enter'&&G.result){const b=$('huNext')||$('nextBtn')||$('rebuyBtn')||$('restartBtn')||$('huRetry');if(b){e.preventDefault();b.click()}}});
 
 window.claude?.hot?.snapshot?.(()=>snap());
-function boot(data){try{if(localStorage.getItem('holdem-mode')==='story')setTimeout(()=>setMode('story'),0)}catch(e){}
+function boot(data){let wel=null;try{wel=localStorage.getItem('holdem-welcomed')}catch(e){}if(!wel)setTimeout(showWelcome,300);
+try{if(localStorage.getItem('holdem-mode')==='story')setTimeout(()=>setMode('story'),0)}catch(e){}
 const s=(data&&data.players?data:null)||loadSession();if(s)resume(s);else startSession()}
 try{if(window.claude?.hot?.ready)window.claude.hot.ready(boot);else boot(window.claude?.hot?.data??{})}catch(e){boot({})}
 </script>
