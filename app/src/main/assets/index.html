@@ -113,6 +113,41 @@ footer{font-size:11px;color:var(--muted)}
 .repbtns{display:flex;gap:6px;flex-wrap:wrap}
 .replist{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
 .replist div{border-top:1px solid var(--line);padding-top:4px}
+/* ---- oval table ---- */
+.tablewrap{display:flex;justify-content:center}
+.ptable{position:relative;width:min(100%,480px);aspect-ratio:10/13}
+.oval{position:absolute;inset:7% 5% 19% 5%;border-radius:50%/40%;background:radial-gradient(ellipse at 50% 38%,var(--felt-2),var(--felt) 72%);border:11px solid var(--rail);box-shadow:inset 0 0 0 2px rgba(217,181,92,.28),inset 0 0 60px rgba(0,0,0,.45),0 10px 28px rgba(0,0,0,.45)}
+.ptable .center{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);width:74%;display:flex;flex-direction:column;align-items:center;gap:6px;z-index:1}
+.ptable .board .card{--w:clamp(30px,9vw,44px)}
+.ptable .center{top:42%}
+#ticker{margin-top:-4px}
+.pseat{position:absolute;transform:translate(-50%,-50%);width:clamp(66px,19vw,82px);display:flex;flex-direction:column;align-items:center;z-index:2;transition:opacity .2s}
+.pcards{display:flex;justify-content:center;height:34px;align-items:flex-end;margin-bottom:-6px}
+.pcards .card{--w:24px;border-radius:4px}
+.pcards .card+.card{margin-left:-5px;transform:rotate(6deg)}
+.pcards .card:first-child{transform:rotate(-6deg)}
+.pbox{position:relative;background:#0b1d16;border:1px solid var(--line);border-radius:10px;padding:3px 6px;width:100%;text-align:center;display:flex;flex-direction:column;line-height:1.25;box-shadow:0 3px 8px rgba(0,0,0,.4)}
+.pname{font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pstk{font-family:var(--f-mono);font-size:12px;font-variant-numeric:tabular-nums;color:var(--brass)}
+.pbadge{position:absolute;top:24px;right:-8px;font-family:var(--f-mono);font-size:9px;font-weight:600;padding:0 5px;border-radius:999px;background:var(--ink);color:var(--room);z-index:3}
+.pact{font-size:10px;color:var(--ink);background:rgba(0,0,0,.45);border-radius:6px;padding:0 5px;margin-top:2px;white-space:nowrap;min-height:14px}
+.pact:empty{visibility:hidden}
+.pseat.turn .pbox,.phero.turn .pbox{border-color:var(--brass);box-shadow:0 0 0 2px var(--brass),0 0 16px rgba(217,181,92,.55)}
+.pseat.out,.phero.out .cards{opacity:.38}
+.pseat.won .pbox,.phero.won .pbox{border-color:var(--good);box-shadow:0 0 0 2px var(--good)}
+.pbet{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;gap:4px;font-family:var(--f-mono);font-size:11px;font-variant-numeric:tabular-nums;background:rgba(0,0,0,.5);padding:1px 7px 1px 2px;border-radius:999px;z-index:1;white-space:nowrap}
+.pbet i{width:13px;height:13px;border-radius:50%;background:radial-gradient(circle,var(--card) 0 28%,var(--bad) 30% 58%,var(--card) 60% 70%,var(--bad) 72%);box-shadow:0 1px 2px rgba(0,0,0,.5)}
+.dbtn{position:absolute;transform:translate(-50%,-50%);width:20px;height:20px;border-radius:50%;background:var(--card);color:#1d2430;font:700 11px/20px var(--f-mono);text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.6);z-index:1}
+.phero{position:absolute;left:50%;bottom:0;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;z-index:3;width:min(62%,250px)}
+.phero .cards{display:flex;justify-content:center;margin-bottom:-10px}
+.phero .card{--w:clamp(48px,14vw,60px)}
+.phero .card:first-child{transform:rotate(-5deg)}
+.phero .card+.card{margin-left:-6px;transform:rotate(5deg)}
+.phero .pbox{flex-direction:row;justify-content:center;align-items:baseline;gap:8px;padding:6px 12px 4px}
+.phero .pname{font-size:13px}
+.phero .pstk{font-size:15px}
+.phero .pbadge{top:-9px;right:-6px}
+.phero .made{font-size:12px;color:var(--brass);margin-top:3px;text-align:center;min-height:16px}
 .modes{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;background:rgba(0,0,0,.25);padding:4px;border-radius:12px}
 .mode{appearance:none;border:0;background:transparent;color:var(--muted);font:inherit;font-weight:700;font-size:15px;padding:10px 4px;border-radius:9px;cursor:pointer}
 .mode[aria-selected="true"]{background:var(--brass);color:var(--brass-ink)}
@@ -222,15 +257,18 @@ footer{font-size:11px;color:var(--muted)}
   <div id="huBanner" class="hubanner" hidden></div>
   <div class="meta" id="meta"></div>
 
-  <section class="felt">
-    <div class="bots" id="bots"></div>
-    <div class="center">
-      <div class="board" id="board"></div>
-      <div class="potline" id="potline"></div>
-      <div class="ticker" id="ticker"></div>
+  <section class="tablewrap">
+    <div class="ptable" id="ptable">
+      <div class="oval"></div>
+      <div class="center">
+        <div class="potline" id="potline"></div>
+        <div class="board" id="board"></div>
+      </div>
+      <div id="bots"></div>
+      <div class="phero" id="hero"></div>
     </div>
-    <div class="hero" id="hero"></div>
   </section>
+  <div class="ticker" id="ticker"></div>
 
   <section class="controls" id="controls">
     <div class="sizes" id="sizes"></div>
@@ -481,7 +519,7 @@ function coach(p){
       A.tierMix=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).map(([t,n])=>`${TIER_KO[t]} ${Math.round(n/tot*100)}%`).join(', ')}}
   if(G.street===0&&G.numRaises===0&&pos==='SB'){A.kind='sbvbb';const inR=RFIB[1].has(key);A.rfiPct=RFIBP[1];
     A.best=inR?'raise':pct<=.7?'call':'fold';
-    A.reason=`앞이 다 폴드해서 BB 한 명만 남은 사실상 헤즈업입니다. ${key}(${top}) · BB 전체 범위 대비 승률 ${(eq*100).toFixed(0)}%, 콜(채우기)에 필요한 승률 ${(need*100).toFixed(0)}%.`+(A.best==='raise'?' SB 레이즈 범위(상위 약 ${Math.round(RFIBP[1]*100)}%) 안이라 3BB로 레이즈해 주도권을 가져갑니다.':A.best==='call'?' 레이즈하기엔 약하지만 0.5BB만 더 내면 되고 팟 오즈가 좋아 채우는(콜) 게 이득입니다. 다만 포스트플랍에서 아웃오브포지션이라 큰 팟은 피하세요.':' 0.5BB라도 아웃오브포지션에서 이 패로 플랍을 보면 손해가 더 큽니다.');return A}
+    A.reason=`앞이 다 폴드해서 BB 한 명만 남은 사실상 헤즈업입니다. ${key}(${top}) · BB 전체 범위 대비 승률 ${(eq*100).toFixed(0)}%, 콜(채우기)에 필요한 승률 ${(need*100).toFixed(0)}%.`+(A.best==='raise'?` SB 레이즈 범위(상위 약 ${Math.round(RFIBP[1]*100)}%) 안이라 3BB로 레이즈해 주도권을 가져갑니다.`:A.best==='call'?' 레이즈하기엔 약하지만 0.5BB만 더 내면 되고 팟 오즈가 좋아 채우는(콜) 게 이득입니다. 다만 포스트플랍에서 아웃오브포지션이라 큰 팟은 피하세요.':' 0.5BB라도 아웃오브포지션에서 이 패로 플랍을 보면 손해가 더 큽니다.');return A}
   if(G.street===0&&G.numRaises===0&&!(pos==='BB'&&toCall===0)){A.kind='rfi';const bh=behindOf(idx);const inR=RFIB[bh]?.has(key);A.rfiPct=RFIBP[bh];A.best=inR?'raise':'fold';
     A.reason=`${pos} 오픈 범위(뒤에 ${bh}명 · 상위 약 ${Math.round(A.rfiPct*100)}%) ${inR?'안':'밖'}의 핸드 ${key}(${top}).`+(inR?' 앞에서 다 폴드했으니 2–2.5BB로 먼저 레이즈합니다.':' 뒤에 남은 사람이 많을수록 약한 핸드로 들어가면 손해입니다.');return A}
   if(G.street===0&&G.numRaises===0){A.kind='bbopt';A.best=pct<=.15?'raise':'check';A.reason=pct<=.15?`${key}(${top})는 림프 팟에서 레이즈할 만한 핸드입니다.`:`${key}(${top})는 공짜로 플랍을 보는 게 낫습니다.`;return A}
@@ -718,23 +756,40 @@ function render(){syncNP();if(G.hu)renderHUBanner();
   const net=hero.stack+(G.result?0:hero.total)-G.invested;
   $('meta').innerHTML=`<div>핸드<b>#${G.hand}</b></div><div>내 스택<b>${fmt(hero.stack)}</b></div><div>손익<b class="${net>0?'pos':net<0?'neg':''}">${net>0?'+':''}${fmt(net)}</b></div><div>리바인 잔여<b>${fmt(G.rebuyLeft)}</b></div>`;
   const winCards=new Set();if(G.showdown&&G.result)G.winners.forEach(i=>best5([...G.players[i].cards,...G.board]).forEach(c=>winCards.add(c)));
-  $('bots').style.setProperty('--cols',Math.min(4,NPN()-1));
-  $('bots').innerHTML=G.players.slice(1).map((p,k)=>{const i=k+1;const pos=posName(i);
-    const show=G.showdown&&!p.folded;
-    const cards=p.cards?(show?p.cards.map(c=>cardHTML(c,'sm '+(winCards.has(c)?'win':''))).join(''):(p.folded?'':backHTML('sm')+backHTML('sm'))):'';
-    return `<div class="seat ${G.acting===i?'turn':''} ${p.folded?'out':''}"><span class="badge ${i===G.button?'dealer':''}">${pos}${i===G.button&&pos!=='BTN'?'·BTN':''}</span>
-      <div class="nm">${p.name}</div><div class="sty">${p.sty}</div><div class="stk">${fmt(p.stack)}</div><div class="sty">리바인 ${p.rebuyLeft>0?fmt(p.rebuyLeft):'없음'}</div>
-      <div class="cards">${cards}</div><div class="act">${p.act||'&nbsp;'}</div><div class="betchip">${p.bet?fmt(p.bet):''}</div></div>`}).join('');
+  /* seats around an oval: hero at the bottom, the rest clockwise (to the hero's left first) */
+  const N=NPN(),CX=50,CY=45,RX=N>=7?38:40,RY=37;const at=k=>{const t=(90+k*360/N)*Math.PI/180;return[Math.cos(t),Math.sin(t)]};
+  const pc=(x,y)=>`left:${x.toFixed(1)}%;top:${y.toFixed(1)}%`;
+  let seats='',chips='';
+  G.players.forEach((p,i)=>{const[dx,dy]=at(i);const pos=posName(i);
+    if(p.bet>0){let x,y;const sx=CX+dx*RX,sy=CY+dy*RY;
+      if(i===0){x=CX;y=CY+RY*.56}
+      else if(dy<-.6){x=sx;y=sy+14}
+      else if(Math.abs(dx)>.6){x=sx-dx*12;y=dy>.3?sy-12:sy+11}
+      else{x=CX+dx*RX*.68;y=CY+dy*RY*.68}
+      if(i!==0&&y>34&&y<54)y=y<44?33:56; /* keep chips off the board row */
+      chips+=`<div class="pbet" style="${pc(x,y)}"><i></i>${fmt(p.bet)}</div>`}
+    if(i===G.button){const sx=CX+dx*RX,sy=CY+dy*RY;let x,y;
+      if(i===0){x=CX+17;y=CY+RY*.56}else if(dy<-.6){x=sx-15;y=sy+9}else{x=sx-(dx>=0?1:-1)*15;y=sy-9}
+      chips+=`<div class="dbtn" style="${pc(x,y)}" title="딜러 버튼">D</div>`}
+    if(i===0)return;
+    const show=G.showdown&&!p.folded;const won=G.result&&G.winners.has(i);
+    const cards=p.cards?(show?p.cards.map(c=>cardHTML(c,winCards.has(c)?'win':'')).join(''):(p.folded?'':backHTML('')+backHTML(''))):'';
+    seats+=`<div class="pseat ${G.acting===i?'turn':''} ${p.folded?'out':''} ${won?'won':''}" style="${pc(CX+dx*RX,CY+dy*RY)}" title="${p.name} · ${p.sty||''}${p.rebuyLeft!==undefined?` · 리바인 ${p.rebuyLeft>0?fmt(p.rebuyLeft):'없음'}`:''}">
+      <div class="pcards">${cards}</div>
+      <div class="pbox"><span class="pname">${p.name}</span><span class="pstk">${p.stack>0||!p.allIn?fmt(p.stack):'올인'}</span></div>
+      <span class="pbadge">${pos}</span><div class="pact">${(p.act||'').replace(/\s*[\d,]+$/,'')}</div></div>`});
+  $('bots').innerHTML=seats+chips;
   const slots=[];for(let i=0;i<5;i++)slots.push(G.board[i]!==undefined?cardHTML(G.board[i],winCards.has(G.board[i])?'win':''):'<div class="card slot"></div>');
   $('board').innerHTML=slots.join('');
   const toCall=G.heroWait?G.currentBet-hero.bet:0;
-  $('potline').innerHTML=`<span class="chip">팟 <em>${fmt(potTotal())}</em></span>`+(toCall>0?`<span class="chip">콜 <em>${fmt(Math.min(toCall,hero.stack))}</em></span>`:'');
+  $('potline').innerHTML=`<span class="chip">팟 <em>${fmt(potTotal())}</em></span>`;
   $('ticker').innerHTML=G.ticker||'';
   const pos=posName(0);const made=hero.cards&&G.board.length>=3?describe(hero.cards,G.board):null;
-  $('hero').className='hero '+(G.acting===0?'turn':'');
-  $('hero').innerHTML=`<span class="badge ${G.button===0?'dealer':''}">${pos}${G.button===0&&pos!=='BTN'?'·BTN':''}</span><div class="cards">${hero.cards&&!hero.folded?hero.cards.map(c=>cardHTML(c,'big '+(winCards.has(c)?'win':''))).join(''):(hero.cards?hero.cards.map(c=>cardHTML(c,'big')).join('').replaceAll('class="card','class="card dimmed'):'')}</div>
-    <div class="info"><span class="nm">나 ${hero.folded?'· 폴드':''}${hero.allIn?'· 올인':''}</span><span class="stk">${fmt(hero.stack)}</span><span class="made">${made?made.text+(made.draws.length?' · '+made.draws.join(', '):''):(hero.cards?keyOf(hero.cards[0],hero.cards[1]):'')}</span>${hero.bet?`<span class="betchip">베팅 ${fmt(hero.bet)}</span>`:''}</div>`;
-  document.querySelectorAll('.dimmed').forEach(e=>e.style.opacity=.4);
+  const heroWon=G.result&&G.winners.has(0);
+  $('hero').className='phero '+(G.acting===0?'turn ':'')+(hero.folded?'out ':'')+(heroWon?'won':'');
+  $('hero').innerHTML=`<div class="cards">${hero.cards?hero.cards.map(c=>cardHTML(c,'big '+(winCards.has(c)?'win':''))).join(''):''}</div>
+    <div class="pbox"><span class="pname">나</span><span class="pbadge">${pos}</span><span class="pstk">${hero.stack>0||!hero.allIn?fmt(hero.stack):'올인'}</span>${hero.folded?'<span class="ctx">폴드</span>':''}</div>
+    <div class="made">${made?made.text+(made.draws.length?' · '+made.draws.join(', '):''):(hero.cards?keyOf(hero.cards[0],hero.cards[1]):'')}</div>`;
   const s=G.stats;const acc=s.dec?Math.round((s.good+s.ok*.5)/s.dec*100):0;
   $('totals').innerHTML=`<span>판단 <b>${s.dec}</b></span><span>좋음 <b>${s.good}</b></span><span>무난 <b>${s.ok}</b></span><span>실수 <b>${s.bad}</b></span><span>판단 점수 <b>${s.dec?acc+'점':'–'}</b></span>`}
 
