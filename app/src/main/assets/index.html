@@ -113,6 +113,23 @@ footer{font-size:11px;color:var(--muted)}
 .repbtns{display:flex;gap:6px;flex-wrap:wrap}
 .replist{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
 .replist div{border-top:1px solid var(--line);padding-top:4px}
+#mpMode{display:flex;flex-direction:column;gap:12px}#mpMode[hidden]{display:none}
+#mpMode textarea,.mpf input,.mpjoin input{font:inherit;font-size:15px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.3);color:var(--ink);min-width:0;width:100%}
+#mpMode textarea{font-family:var(--f-mono);font-size:12px}
+.mpf{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:700}
+.mpjoin{display:grid;grid-template-columns:1fr auto;gap:8px}
+.mpjoin input{text-transform:uppercase;letter-spacing:.3em;font-family:var(--f-mono)}
+.mpbar{display:flex;justify-content:space-between;align-items:center}
+.mpcode{font-family:var(--f-mono);font-size:22px;color:var(--brass);letter-spacing:.15em}
+.mpbtns{display:flex;gap:14px}
+.mpp{display:flex;gap:8px;align-items:center;font-size:14px}.mpp .ctx{margin-left:auto;font-family:var(--f-mono)}
+.mpset{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--muted)}
+.mpset select{font:inherit;color:var(--ink);background:#1a3a2f;border:1px solid var(--line);border-radius:8px;padding:3px 6px}
+.ptable.mpt{margin:0 auto}
+.emobar{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}.emobar .size{flex:none;flex-direction:row;font-size:12px}
+.emo{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:var(--card);color:#1d2430;font-size:11px;font-weight:700;padding:3px 8px;border-radius:10px;white-space:nowrap;z-index:5}
+.err{font-size:13px;color:var(--bad)}
+#mpR.armed{background:var(--bad);border-color:var(--bad);color:#fff}
 .hctl{display:flex;gap:10px;flex-wrap:wrap}
 .dcard{appearance:none;font:inherit;color:var(--ink);text-align:left;background:linear-gradient(135deg,#1d3b2f,var(--panel));border:1px solid var(--brass);border-radius:14px;padding:12px 14px;display:grid;grid-template-columns:1fr auto;gap:2px 10px;cursor:pointer}
 .dcard:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
@@ -224,7 +241,7 @@ details.more[open]{display:flex;flex-direction:column;gap:8px}
 .phero .pstk{font-size:15px}
 .phero .pbadge{top:-9px;right:-6px}
 .phero .made{font-size:12px;color:var(--brass);margin-top:3px;text-align:center;min-height:16px}
-.modes{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;background:rgba(0,0,0,.25);padding:4px;border-radius:12px}
+.modes{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:rgba(0,0,0,.25);padding:4px;border-radius:12px}
 .mode{appearance:none;border:0;background:transparent;color:var(--muted);font:inherit;font-weight:700;font-size:15px;padding:10px 4px;border-radius:9px;cursor:pointer}
 .mode[aria-selected="true"]{background:var(--brass);color:var(--brass-ink)}
 .mode:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
@@ -344,7 +361,8 @@ details.more[open]{display:flex;flex-direction:column;gap:8px}
       <div id="repList" class="replist"></div>
     </div>
   </section>
-  <nav class="modes" role="tablist"><button class="mode" role="tab" data-m="live" aria-selected="true">실전</button><button class="mode" role="tab" data-m="hu" aria-selected="false">헤즈업</button><button class="mode" role="tab" data-m="story" aria-selected="false">스토리</button></nav>
+  <nav class="modes" role="tablist"><button class="mode" role="tab" data-m="live" aria-selected="true">실전</button><button class="mode" role="tab" data-m="hu" aria-selected="false">헤즈업</button><button class="mode" role="tab" data-m="story" aria-selected="false">스토리</button><button class="mode" role="tab" data-m="mp" aria-selected="false">친구와</button></nav>
+  <section id="mpMode" hidden></section>
   <section id="storyMode" hidden></section>
   <section id="huMap" hidden></section>
   <div id="liveMode">
@@ -1487,7 +1505,7 @@ function showWelcome(){const w=$('welcome');w.hidden=false;
 function setMode(m){
   if(m==='live')backToLive();
   document.querySelectorAll('.mode').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.m===m)));
-  $('storyMode').hidden=m!=='story';
+  $('storyMode').hidden=m!=='story';$('mpMode').hidden=m!=='mp';if(m==='mp')mpRender();
   $('liveMode').hidden=!(m==='live'||(m==='hu'&&G.hu));
   $('huMap').hidden=!(m==='hu'&&!G.hu);
   $('npLabel').hidden=m!=='live';const ft=document.querySelector('footer');if(ft)ft.hidden=m!=='live';
@@ -1496,6 +1514,207 @@ function setMode(m){
 document.querySelectorAll('.mode').forEach(b=>b.onclick=()=>setMode(b.dataset.m));
 
 {const ts=$('themeSel');ts.innerHTML=Object.entries(THEMES).map(([k,v])=>`<option value="${k}">${v[0]}</option>`).join('');let k='green';try{k=localStorage.getItem('holdem-theme')||'green'}catch(e){}ts.value=k;applyTheme(k);ts.onchange=()=>applyTheme(ts.value)}
+/* ===== online multiplayer with friends (Firebase Realtime Database) =====
+   The room creator's phone is the dealer: it shuffles, deals, checks every action and settles pots.
+   Each player's hole cards are written to /hands/<room>/<uid>, which security rules let only that player read. */
+const MP_MAX=8,MP_EMOTES=['나이스 핸드','블러프지?','콜 하시죠','올인 각','다음 판 간다','ㅋㅋㅋ'];
+const MPCFG_KEY='holdem-fbcfg',MPNAME_KEY='holdem-mpname';
+const mpCfg=()=>{try{return JSON.parse(localStorage.getItem(MPCFG_KEY)||'null')||(typeof FB_DEFAULT!=='undefined'?FB_DEFAULT:null)}catch(e){return null}};
+function loadScript(src){return new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>no(new Error('load '+src));document.head.appendChild(s)})}
+/* ---- transport: Firebase, or a same-device local channel used for testing ---- */
+function makeLocalNet(){const ch=new BroadcastChannel('holdem-mp');const KEY='holdem-mp-store';const subs=[];
+  const read=()=>{try{return JSON.parse(localStorage.getItem(KEY))||{}}catch(e){return{}}};
+  const get=(o,path)=>path.split('/').filter(Boolean).reduce((a,k)=>a==null?a:a[k],o);
+  const write=(path,val)=>{const o=read();const ks=path.split('/').filter(Boolean);let cur=o;for(let i=0;i<ks.length-1;i++){cur[ks[i]]=cur[ks[i]]&&typeof cur[ks[i]]==='object'?cur[ks[i]]:{};cur=cur[ks[i]]}
+    if(val===null)delete cur[ks[ks.length-1]];else cur[ks[ks.length-1]]=JSON.parse(JSON.stringify(val));localStorage.setItem(KEY,JSON.stringify(o));fire();ch.postMessage(1)};
+  const fire=()=>{const o=read();subs.forEach(s=>{const v=get(o,s.path)??null;const j=JSON.stringify(v);if(j!==s.last){s.last=j;s.cb(v)}})};
+  ch.onmessage=fire;let uid=sessionStorage.getItem('mp-uid');if(!uid){uid='L'+Math.random().toString(36).slice(2,9);sessionStorage.setItem('mp-uid',uid)}
+  return{kind:'local',uid,async init(){},now:()=>Date.now(),
+    on(path,cb){const s={path,cb,last:undefined};subs.push(s);setTimeout(fire,0);return()=>subs.splice(subs.indexOf(s),1)},
+    async set(path,v){write(path,v)},async update(path,obj){for(const k in obj)write(path+'/'+k,obj[k])},
+    async push(path,v){write(path+'/'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),v)},
+    async get(path){return get(read(),path)??null},onDisconnectSet(){}}}
+async function makeFirebaseNet(cfg){
+  if(!window.firebase){for(const f of['firebase-app-compat.js','firebase-auth-compat.js','firebase-database-compat.js'])
+    await loadScript((location.host==='appassets.androidplatform.net'?'firebase/':'https://cdn.jsdelivr.net/npm/firebase@10.12.2/')+f)}
+  const app=firebase.apps.length?firebase.app():firebase.initializeApp(cfg);const auth=app.auth(),db=app.database();
+  const cred=auth.currentUser?{user:auth.currentUser}:await auth.signInAnonymously();let off=0;db.ref('.info/serverTimeOffset').on('value',s=>off=s.val()||0);
+  return{kind:'firebase',uid:cred.user.uid,now:()=>Date.now()+off,
+    on(path,cb){const r=db.ref(path);const h=s=>cb(s.val());r.on('value',h);return()=>r.off('value',h)},
+    async set(path,v){await db.ref(path).set(v)},async update(path,obj){await db.ref(path).update(obj)},
+    async push(path,v){await db.ref(path).push(v)},async get(path){return(await db.ref(path).get()).val()},
+    onDisconnectSet(path,v){db.ref(path).onDisconnect().set(v)}}}
+/* ---- host engine (pure state changes; only the host runs it) ---- */
+const MPH={deck:null,code:null,unsub:[],timer:null,nextAt:0,busy:false};
+function mpSeatsFrom(S,players){const ids=S.order.filter(u=>players[u]&&players[u].online!==false&&(S.stacks[u]||0)>0);return ids}
+function mpStartHand(S,players){const ids=mpSeatsFrom(S,players);if(ids.length<2){S.phase='lobby';S.note='칩이 있는 접속자가 2명 이상이어야 시작돼요.';return false}
+  const prevBtnUid=S.seats&&S.seats[S.button]?S.seats[S.button].uid:null;
+  let b=prevBtnUid?ids.indexOf(prevBtnUid):-1;b=(b+1+ids.length)%ids.length;if(prevBtnUid&&!ids.includes(prevBtnUid)){const oi=S.order.indexOf(prevBtnUid);b=ids.findIndex(u=>S.order.indexOf(u)>oi);if(b<0)b=0}
+  const d=[...Array(52).keys()];for(let i=51;i>0;i--){const j=Math.random()*(i+1)|0;[d[i],d[j]]=[d[j],d[i]]}MPH.deck=d;
+  S.handNo=(S.handNo||0)+1;S.phase='play';S.button=b;S.board=[];S.street=0;S.shown={};S.result=null;S.note='';S.log=[];
+  S.seats=ids.map(u=>({uid:u,stack:S.stacks[u],bet:0,total:0,folded:false,allIn:false,acted:false,act:''}));
+  const N=S.seats.length,[sbA,bbA]=S.blinds,sb=N===2?b:(b+1)%N,bb=N===2?(b+1)%N:(b+2)%N;
+  const post=(i,a)=>{const s=S.seats[i];const x=Math.min(a,s.stack);s.stack-=x;s.bet+=x;s.total+=x;if(!s.stack)s.allIn=true};
+  post(sb,sbA);post(bb,bbA);S.seats[sb].act='SB';S.seats[bb].act='BB';S.currentBet=bbA;S.minRaise=bbA;S.sb=sb;S.bb=bb;
+  S.hole={};S.seats.forEach((s,i)=>{S.hole[s.uid]=[d.pop(),d.pop()]});
+  S.log.push(`#${S.handNo} 블라인드 ${fmt(sbA)}/${fmt(bbA)}`);S.toAct=-1;mpAdvance(S,(bb)%N,true);return true}
+function mpCanAct(s){return!s.folded&&!s.allIn}
+function mpAdvance(S,from){const N=S.seats.length;
+  if(S.seats.filter(s=>!s.folded).length===1)return mpSettle(S);
+  for(let k=1;k<=N;k++){const i=(from+k)%N,s=S.seats[i];if(mpCanAct(s)&&(!s.acted||s.bet<S.currentBet)){
+    const can=S.seats.filter(mpCanAct);if(can.length===1&&s.bet>=S.currentBet)break;
+    S.toAct=i;S.deadline=MPH.now()+S.timer*1000;return}}
+  S.toAct=-1;mpNextStreet(S)}
+function mpNextStreet(S){if(S.street===3)return mpSettle(S);
+  S.seats.forEach(s=>{s.bet=0;s.acted=false;if(mpCanAct(s))s.act=''});S.currentBet=0;S.minRaise=S.blinds[1];S.street++;
+  const d=MPH.deck;if(S.street===1)S.board.push(d.pop(),d.pop(),d.pop());else S.board.push(d.pop());
+  S.log.push(['','플랍','턴','리버'][S.street]+' '+S.board.map(c=>rl(cr(c))+SYM[cs(c)]).join(' '));
+  if(S.seats.filter(mpCanAct).length<=1){S.runout=true;S.shown=Object.fromEntries(S.seats.map((s,i)=>[i,s]).filter(([i,s])=>!s.folded).map(([i,s])=>[i,S.hole[s.uid]]));S.toAct=-1;return}
+  const N=S.seats.length;mpAdvance(S,(S.button)%N)}
+function mpApply(S,uid,a){const i=S.toAct;if(i<0||S.phase!=='play')return false;const s=S.seats[i];if(s.uid!==uid)return false;
+  const toCall=S.currentBet-s.bet;let t=a.t;
+  if(t==='check'&&toCall>0)return false;if(t==='call'&&toCall===0)t='check';
+  if(t==='fold'){s.folded=true;s.act='폴드'}
+  else if(t==='check'){s.act='체크'}
+  else if(t==='call'){const x=Math.min(toCall,s.stack);s.stack-=x;s.bet+=x;s.total+=x;if(!s.stack)s.allIn=true;s.act=s.allIn?'올인':'콜'}
+  else if(t==='raise'){const maxTo=s.bet+s.stack;let to=Math.min(+a.to||0,maxTo);const minTo=S.currentBet+S.minRaise;
+    if(to<=S.currentBet)return false;if(to<minTo&&to<maxTo)return false;
+    const inc=to-S.currentBet;s.stack-=to-s.bet;s.total+=to-s.bet;s.bet=to;if(!s.stack)s.allIn=true;
+    if(inc>=S.minRaise){S.minRaise=inc;S.seats.forEach(o=>{if(o!==s)o.acted=false})}else S.seats.forEach(o=>{if(o!==s&&o.bet<to)o.acted=false});
+    S.currentBet=to;s.act=(s.allIn?'올인 ':S.street&&S.currentBet===to&&inc===to?'벳 ':'레이즈 ')+fmt(to)}
+  else return false;
+  s.acted=true;S.log.push(`${S.names[uid]||'?'} ${s.act}`);if(S.log.length>14)S.log.shift();
+  mpAdvance(S,i);return true}
+function mpSettle(S){const act=S.seats.filter(s=>!s.folded);const res={lines:[],winners:[]};
+  while(S.board.length<5&&act.length>1)S.board.push(MPH.deck.pop());
+  if(act.length===1){const w=act[0];const amt=S.seats.reduce((a,s)=>a+s.total,0);w.stack+=amt;res.winners.push(S.seats.indexOf(w));res.title=`${S.names[w.uid]} 승 · ${fmt(amt)}`}
+  else{const sc=new Map(act.map(s=>[s,ev([...S.hole[s.uid],...S.board])]));const lv=[...new Set(S.seats.map(s=>s.total).filter(t=>t>0))].sort((a,b)=>a-b);let prev=0;const won=new Map();
+    for(const L of lv){let amt=0;S.seats.forEach(s=>amt+=Math.max(0,Math.min(s.total,L)-prev));let el=act.filter(s=>s.total>=L);if(!el.length)el=act;
+      const m=Math.max(...el.map(s=>sc.get(s)));const ws=el.filter(s=>sc.get(s)===m);const sh=Math.floor(amt/ws.length/100)*100;const rem=amt-sh*ws.length;
+      ws.forEach((s,k)=>{const g=sh+(k===0?rem:0);s.stack+=g;won.set(s,(won.get(s)||0)+g)});prev=L}
+    won.forEach((v,s)=>res.winners.push(S.seats.indexOf(s)));
+    act.forEach(s=>{S.shown[S.seats.indexOf(s)]=S.hole[s.uid];res.lines.push(`${S.names[s.uid]}: ${CAT[sc.get(s)>>20]}${won.has(s)?` +${fmt(won.get(s))}`:''}`)});
+    const names=[...won.keys()].map(s=>S.names[s.uid]);res.title=names.length>1?`스플릿 · ${names.join(', ')}`:`${names[0]} 승 · ${fmt([...won.values()][0])}`}
+  S.seats.forEach(s=>{S.stacks[s.uid]=s.stack});S.result=res;S.phase='result';S.toAct=-1;S.runout=false;S.nextAt=MPH.now()+6000;S.log.push(res.title)}
+/* ---- host loop ---- */
+async function mpHostTick(){if(!MP.isHost||MPH.busy||!MP.room)return;MPH.busy=true;try{
+  const S=MP.state,P=MP.players||{};if(!S)return;let changed=false;
+  /* new players / rebuys / names */
+  for(const[u,p]of Object.entries(P)){if(!S.order.includes(u)&&S.order.length<MP_MAX){S.order.push(u);S.stacks[u]=S.stack;S.buyins[u]=1;changed=true}
+    if(p.name&&S.names[u]!==p.name){S.names[u]=p.name;changed=true}
+    if(p.rebuy&&p.rebuy!==S.rebuyDone[u]&&(S.stacks[u]||0)===0&&S.phase!=='play'){S.stacks[u]=S.stack;S.buyins[u]=(S.buyins[u]||0)+1;S.rebuyDone[u]=p.rebuy;changed=true}}
+  const now=MPH.now();
+  if(S.phase==='play'&&S.runout){if(!S.runAt){S.runAt=now+1200;changed=true}else if(now>=S.runAt){S.runAt=0;if(S.board.length<5){const d=MPH.deck;if(S.board.length===0)S.board.push(d.pop(),d.pop(),d.pop());else S.board.push(d.pop());S.street=Math.min(3,S.street+1);changed=true}else{mpSettle(S);changed=true}}}
+  else if(S.phase==='play'&&S.toAct>=0&&now>S.deadline){const s=S.seats[S.toAct];mpApply(S,s.uid,{t:S.currentBet>s.bet?'fold':'check'});S.log.push(`(${S.names[s.uid]} 시간 초과)`);changed=true}
+  else if(S.phase==='result'&&S.running&&now>=S.nextAt){mpStartHand(S,P);changed=true}
+  if(changed)await mpPublish()}finally{MPH.busy=false}}
+async function mpPublish(){const S=MP.state,code=MP.room,N=MP.net;const pub={...S};const hole=pub.hole;delete pub.hole;
+  if(S.phase==='play'&&!S.runout)pub.shown={};
+  const writes=[N.set(`rooms/${code}/state`,pub)];
+  if(hole&&S.handNo!==MPH.dealt){MPH.dealt=S.handNo;for(const[u,c]of Object.entries(hole))writes.push(N.set(`hands/${code}/${u}`,{hand:S.handNo,cards:c}))}
+  await Promise.all(writes);mpRender()}
+MPH.seen=new Set();
+async function mpOnAction(list){if(!MP.isHost||!list)return;for(const[k,a]of Object.entries(list)){if(MPH.seen.has(k))continue;MPH.seen.add(k);
+  await MP.net.set(`rooms/${MP.room}/actions/${k}`,null);
+  if(a.hand!==MP.state.handNo)continue;if(mpApply(MP.state,a.uid,a))await mpPublish()}}
+/* ---- client ---- */
+const MP={net:null,room:null,isHost:false,state:null,players:null,hole:null,unsub:[],sel:0,err:''};
+async function mpConnect(){if(MP.net)return MP.net;const cfg=mpCfg();if(!cfg)throw new Error('설정 없음');
+  MP.net=cfg.local?makeLocalNet():await makeFirebaseNet(cfg);MPH.now=MP.net.now;return MP.net}
+function mpCode(){const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return Array.from({length:4},()=>A[Math.random()*A.length|0]).join('')}
+async function mpCreate(){const N=await mpConnect();let code;for(let i=0;i<6;i++){code=mpCode();if(!(await N.get(`rooms/${code}/meta`)))break}
+  await N.set(`rooms/${code}/meta`,{host:N.uid,created:N.now()});
+  MP.state={phase:'lobby',order:[],stacks:{},buyins:{},names:{},rebuyDone:{},blinds:[500,1000],stack:30000,timer:30,handNo:0,seats:[],board:[],log:[],running:false};
+  await mpJoin(code,true)}
+async function mpJoin(code,asHost){const N=await mpConnect();code=String(code||'').trim().toUpperCase();
+  const meta=await N.get(`rooms/${code}/meta`);if(!meta)throw new Error('방을 찾을 수 없어요. 코드를 확인해 주세요.');
+  MP.room=code;MP.isHost=meta.host===N.uid;const name=(localStorage.getItem(MPNAME_KEY)||'').trim()||'플레이어';
+  await N.set(`rooms/${code}/players/${N.uid}`,{name,online:true,joined:N.now()});N.onDisconnectSet(`rooms/${code}/players/${N.uid}/online`,false);
+  MP.unsub.push(N.on(`rooms/${code}/players`,v=>{MP.players=v||{};if(MP.isHost)mpHostTick();mpRender()}));
+  MP.unsub.push(N.on(`hands/${code}/${N.uid}`,v=>{MP.hole=v;mpRender()}));
+  if(MP.isHost){if(asHost)await mpPublish();else{MP.state=await N.get(`rooms/${code}/state`);const S=MP.state;
+      if(S&&S.phase==='play'){S.seats.forEach(x=>{S.stacks[x.uid]=x.stack+x.total});S.phase='lobby';S.running=false;S.note='방장이 다시 들어와서 진행 중이던 핸드는 무효 처리했어요(칩 반환).';await mpPublish()}}
+    MP.unsub.push(N.on(`rooms/${code}/actions`,mpOnAction));clearInterval(MPH.timer);MPH.timer=setInterval(mpHostTick,500)}
+  else MP.unsub.push(N.on(`rooms/${code}/state`,v=>{MP.state=v;mpRender()}));
+  try{localStorage.setItem('holdem-mproom',code)}catch(e){}mpRender()}
+async function mpLeave(){if(MP.net&&MP.room)await MP.net.update(`rooms/${MP.room}/players/${MP.net.uid}`,{online:false});
+  MP.unsub.forEach(f=>f());MP.unsub=[];clearInterval(MPH.timer);MP.room=null;MP.state=null;MP.hole=null;MP.isHost=false;try{localStorage.removeItem('holdem-mproom')}catch(e){}mpRender()}
+async function mpAct(t,to){const S=MP.state;await MP.net.push(`rooms/${MP.room}/actions`,{uid:MP.net.uid,t,to:to||0,hand:S.handNo,ts:MP.net.now()})}
+async function mpHostCmd(cmd){const S=MP.state;if(!MP.isHost)return;
+  if(cmd==='start'){S.running=true;if(S.phase!=='play')mpStartHand(S,MP.players||{})}
+  if(cmd==='pause'){S.running=false}
+  await mpPublish();mpRender()}
+/* ---- rendering ---- */
+const mpMe=()=>MP.state&&MP.state.seats?MP.state.seats.findIndex(s=>s.uid===MP.net.uid):-1;
+function mpRender(){const el=$('mpMode');if(!el||el.hidden)return;let h='';const cfg=mpCfg();
+  if(location.host!=='appassets.androidplatform.net'&&!(cfg&&cfg.local)){el.innerHTML=`<div class="smap"><div class="shdr"><h2>친구와 온라인</h2></div><p>친구들과 각자 폰으로 같은 테이블에 앉는 온라인 대전은 <strong>안드로이드 앱</strong>에서 할 수 있어요. 이 화면(claude.ai)에서는 실시간 서버에 연결할 수 없어요.</p></div>`;return}
+  if(!cfg){h=`<div class="smap"><div class="shdr"><h2>친구와 온라인</h2></div><p>친구들과 각자 폰으로 같은 테이블에 앉는 모드예요. 처음 한 번, 무료 Firebase 서버 정보를 넣어야 해요.</p>
+    <p class="ctx">Firebase 콘솔에서 만든 웹 앱 설정(firebaseConfig)을 그대로 붙여넣으세요. 앱을 만든 사람이 한 번 넣어서 친구들에게 같은 APK를 주면, 친구들은 이 단계 없이 바로 쓸 수 있게 해 드릴게요.</p>
+    <textarea id="cfgIn" rows="7" placeholder='{"apiKey":"...","authDomain":"...","databaseURL":"https://...firebaseio.com","projectId":"...","appId":"..."}'></textarea>
+    <button class="btn prim" id="cfgSave">저장</button><div class="err" id="mpErr">${MP.err}</div></div>`;el.innerHTML=h;
+    $('cfgSave').onclick=()=>{try{const t=$('cfgIn').value.trim();const j=JSON.parse(t.replace(/^[^{]*/,'').replace(/[^}]*$/,'').replace(/(\w+)\s*:/g,'"$1":').replace(/""/g,'"').replace(/'/g,'"'));if(!j.databaseURL&&!j.local)throw 0;localStorage.setItem(MPCFG_KEY,JSON.stringify(j));MP.err='';mpRender()}catch(e){$('mpErr').textContent='설정을 읽지 못했어요. databaseURL이 들어 있는지 확인해 주세요.'}};return}
+  if(!MP.room){const name=localStorage.getItem(MPNAME_KEY)||'';
+    h=`<div class="smap"><div class="shdr"><h2>친구와 온라인</h2></div>
+     <label class="mpf" for="mpName">내 이름<input id="mpName" maxlength="10" value="${esc(name)}" placeholder="테이블에 보일 이름"></label>
+     <button class="btn prim" id="mpNew">방 만들기<small>내가 딜러가 돼요</small></button>
+     <div class="mpjoin"><input id="mpCodeIn" maxlength="4" placeholder="방 코드 4자리" autocapitalize="characters"><button class="btn" id="mpJoinBtn">참가</button></div>
+     <div class="err" id="mpErr">${MP.err}</div>
+     <p class="ctx">방을 만든 사람의 폰이 카드를 섞고 승패를 판정해요. 방장이 앱을 닫으면 게임이 멈춰요. 각자의 카드는 본인 폰에서만 보입니다.</p>
+     <button class="link" id="cfgReset">서버 설정 바꾸기</button></div>`;el.innerHTML=h;
+    const nm=()=>{const v=$('mpName').value.trim();localStorage.setItem(MPNAME_KEY,v);return v};
+    const run=async f=>{if(!nm()){$('mpErr').textContent='이름을 먼저 적어 주세요.';return}MP.err='';$('mpErr').textContent='연결 중…';try{await f()}catch(e){MP.err=e.message||'연결하지 못했어요.';mpRender()}};
+    $('mpNew').onclick=()=>run(mpCreate);$('mpJoinBtn').onclick=()=>run(()=>mpJoin($('mpCodeIn').value));
+    $('cfgReset').onclick=()=>{localStorage.removeItem(MPCFG_KEY);MP.net=null;mpRender()};return}
+  const S=MP.state||{phase:'lobby',seats:[],order:[],names:{},stacks:{}};const P=MP.players||{};const me=mpMe();
+  h=`<div class="mpbar"><span>방 코드 <strong class="mpcode">${MP.room}</strong></span><span class="mpbtns"><button class="link" id="mpShare">초대</button><button class="link" id="mpLeave">나가기</button></span></div>`;
+  if(S.phase==='lobby'||!S.seats.length){
+    h+=`<div class="hpanel"><h3>참가자 ${Object.keys(P).length}/${MP_MAX}</h3>${(S.order.length?S.order:Object.keys(P)).map(u=>`<div class="mpp"><span class="lvdot ${P[u]?.online===false?'blunder':'best'}"></span>${esc(P[u]?.name||S.names[u]||'?')}${u===MP.net.uid?' (나)':''}<span class="ctx">${fmt(S.stacks[u]??S.stack??30000)}</span></div>`).join('')}
+     ${MP.isHost?`<div class="mpset"><label>블라인드 <select id="mpBl">${[[500,1000],[1000,2000],[2500,5000]].map(b=>`<option value="${b}" ${String(S.blinds)===String(b)?'selected':''}>${fmt(b[0])}/${fmt(b[1])}</option>`).join('')}</select></label><label>시작 칩 <select id="mpSt">${[30000,50000,100000].map(v=>`<option ${S.stack===v?'selected':''}>${v}</option>`).join('')}</select></label><label>제한 시간 <select id="mpTm">${[15,30,60].map(v=>`<option ${S.timer===v?'selected':''}>${v}</option>`).join('')}</select>초</label></div>
+       <button class="btn prim" id="mpStart" ${Object.values(P).filter(p=>p.online!==false).length<2?'disabled':''}>게임 시작<small>2명 이상</small></button>`:'<p class="ctx">방장이 게임을 시작하길 기다리는 중…</p>'}
+     ${S.note?`<p class="ctx">${S.note}</p>`:''}</div>`}
+  else{const N=S.seats.length;const meIdx=me>=0?me:0;const at=k=>{const t=(90+k*360/N)*Math.PI/180;return[Math.cos(t),Math.sin(t)]};const pc=(x,y)=>`left:${x.toFixed(1)}%;top:${y.toFixed(1)}%`;
+    const CX=50,CY=45,RX=N>=7?38:40,RY=37;let seats='',chips='';
+    const now=MP.net.now(),left=S.toAct>=0?Math.max(0,Math.ceil((S.deadline-now)/1000)):0;
+    S.seats.forEach((s,i)=>{const k=(i-meIdx+N)%N;const[dx,dy]=at(k);const sx=CX+dx*RX,sy=CY+dy*RY;
+      if(s.bet>0){let x,y;if(k===0){x=CX;y=CY+RY*.56}else if(dy<-.6){x=sx;y=sy+14}else if(Math.abs(dx)>.6){x=sx-dx*20;y=dy>.3?sy-12:sy+11}else{x=CX+dx*RX*.68;y=CY+dy*RY*.68}if(k&&y>34&&y<54)y=y<44?33:56;chips+=`<div class="pbet" style="${pc(x,y)}"><i></i>${fmt(s.bet)}</div>`}
+      if(i===S.button){let x,y;if(k===0){x=CX+17;y=CY+RY*.56}else if(dy<-.6){x=sx-15;y=sy+9}else if(Math.abs(dx)>.6){x=sx-dx*8;y=sy+13}else{x=sx-(dx>=0?1:-1)*15;y=sy-9}chips+=`<div class="dbtn" style="${pc(x,y)}">D</div>`}
+      if(k===0&&me>=0)return;
+      const cards=S.shown&&S.shown[i]?S.shown[i].map(c=>cardHTML(c,'')).join(''):s.folded?'':backHTML('')+backHTML('');
+      const won=S.result&&S.result.winners.includes(i);const emo=P[s.uid]?.emote&&now-P[s.uid].emote.ts<4000?`<span class="emo">${esc(P[s.uid].emote.t)}</span>`:'';
+      seats+=`<div class="pseat ${S.toAct===i?'turn':''} ${s.folded?'out':''} ${won?'won':''}" style="${pc(sx,sy)}"><div class="pcards">${cards}</div><div class="pbox"><span class="pname">${esc(S.names[s.uid]||'?')}${P[s.uid]?.online===false?' · 끊김':''}</span><span class="pstk">${s.allIn&&!s.stack?'올인':fmt(s.stack)}</span></div><div class="pact">${s.act||''}</div>${S.toAct===i?`<span class="peq">${left}s</span>`:''}${emo}</div>`});
+    const slots=[];for(let i=0;i<5;i++)slots.push(S.board[i]!==undefined?cardHTML(S.board[i]):'<div class="card slot"></div>');
+    const pot=S.seats.reduce((a,s)=>a+s.total,0);const mine=me>=0?S.seats[me]:null;const hole=MP.hole&&MP.hole.hand===S.handNo?MP.hole.cards:null;
+    const made=hole&&S.board.length>=3?describe(hole,S.board).text:hole?keyOf(hole[0],hole[1]):'';
+    const myEmo=P[MP.net.uid]?.emote&&now-P[MP.net.uid].emote.ts<4000?`<span class="emo">${esc(P[MP.net.uid].emote.t)}</span>`:'';
+    h+=`<div class="ptable mpt"><div class="oval"></div><div class="center"><div class="potline"><span class="chip">팟 <em>${fmt(pot)}</em></span></div><div class="board">${slots.join('')}</div></div>
+      <div>${seats}${chips}</div>
+      ${mine?`<div class="phero ${S.toAct===me?'turn':''} ${mine.folded?'out':''} ${S.result&&S.result.winners.includes(me)?'won':''}"><div class="cards">${hole?hole.map(c=>cardHTML(c,'big')).join(''):''}</div><div class="pbox"><span class="pname">${esc(S.names[mine.uid]||'나')}</span><span class="pstk">${fmt(mine.stack)}</span>${S.toAct===me?`<span class="peq hero">${left}s</span>`:''}</div><div class="made">${made}</div>${myEmo}</div>`:`<div class="phero"><div class="pbox"><span class="ctx">관전 중 · 다음 핸드부터 참가</span></div></div>`}</div>
+      <div class="ticker">${S.result?S.result.title:S.toAct>=0?`<strong>${esc(S.names[S.seats[S.toAct].uid])}</strong> 차례`:'카드를 여는 중…'}</div>`;
+    if(mine&&S.toAct===me&&S.phase==='play'){const toCall=S.currentBet-mine.bet,maxTo=mine.bet+mine.stack,minTo=Math.min(maxTo,S.currentBet+S.minRaise),bbA=S.blinds[1];
+      if(!MP.sel||MP.sel<minTo||MP.sel>maxTo)MP.sel=minTo;
+      const pre=(S.street===0?[[2.5,'2.5BB',2.5*bbA],[3,'3BB',3*bbA]]:[[0,'½팟',S.currentBet+(pot+toCall)/2],[0,'⅔팟',S.currentBet+(pot+toCall)*2/3],[0,'팟',S.currentBet+pot+toCall]]).map(([_,l,v])=>[l,Math.min(maxTo,Math.max(minTo,Math.round(v/500)*500))]).concat([['올인',maxTo]]);
+      h+=`<section class="controls mpc">${maxTo>S.currentBet?`<div class="raisepanel"><div class="sizes">${pre.map(([l,v])=>`<button class="size ${l==='올인'?'allin':''}" data-v="${v}" aria-pressed="${v===MP.sel}">${l}<small>${fmt(v)}</small></button>`).join('')}</div>
+        <div class="slider"><input type="range" id="mpAmt" min="${minTo}" max="${maxTo}" step="500" value="${MP.sel}"><output>${fmt(MP.sel)}</output></div></div>`:''}
+        <div class="acts"><button class="btn fold" id="mpF">폴드</button><button class="btn" id="mpC">${toCall?`콜 ${fmt(Math.min(toCall,mine.stack))}`:'체크'}</button><button class="btn prim" id="mpR" ${maxTo>S.currentBet?'':'disabled'}>${MP.sel>=maxTo?'올인':S.currentBet?'레이즈':'벳'} ${fmt(MP.sel)}</button></div></section>`}
+    h+=`<div class="emobar">${MP_EMOTES.map(e=>`<button class="size" data-e="${e}">${e}</button>`).join('')}</div>`;
+    if(mine&&!mine.stack&&S.phase!=='play'||me<0&&(S.stacks[MP.net.uid]===0))h+=`<button class="btn" id="mpRebuy">리바인 +${fmt(S.stack)}</button>`;
+    if(MP.isHost)h+=`<div class="mpbtns"><button class="link" id="mpPause">${S.running?'이번 핸드 끝나고 멈추기':'게임 계속'}</button></div>`;
+    h+=`<details class="hitem"><summary>기록</summary><ol class="hlog">${(S.log||[]).map(l=>`<li>${esc(l)}</li>`).join('')}</ol></details>`}
+  el.innerHTML=h;
+  const q=id=>document.getElementById(id);
+  q('mpLeave').onclick=mpLeave;q('mpShare').onclick=()=>{const t=`홀덤의 바이블 · 같이 치자! 앱의 "친구와" 탭에서 방 코드 ${MP.room} 입력`;if(window.Android?.share)Android.share(t);else navigator.clipboard?.writeText(t)};
+  if(q('mpStart')){const upd=async()=>{S.blinds=q('mpBl').value.split(',').map(Number);S.stack=+q('mpSt').value;S.timer=+q('mpTm').value;S.order.forEach(u=>{if(!S.handNo)S.stacks[u]=S.stack})};
+    ['mpBl','mpSt','mpTm'].forEach(id=>q(id).onchange=async()=>{await upd();await mpPublish();mpRender()});q('mpStart').onclick=async()=>{await upd();mpHostCmd('start')}}
+  if(q('mpPause'))q('mpPause').onclick=()=>mpHostCmd(S.running?'pause':'start');
+  el.querySelectorAll('.raisepanel .size').forEach(b=>b.onclick=()=>{MP.sel=+b.dataset.v;mpRender()});
+  if(q('mpAmt'))q('mpAmt').oninput=e=>{MP.sel=+e.target.value;mpRender()};
+  let armed=false;
+  if(q('mpF'))q('mpF').onclick=()=>mpAct('fold');if(q('mpC'))q('mpC').onclick=()=>mpAct(S.currentBet>S.seats[me].bet?'call':'check');
+  if(q('mpR'))q('mpR').onclick=()=>{const maxTo=S.seats[me].bet+S.seats[me].stack;if(MP.sel>=maxTo&&!MP.armed){MP.armed=true;q('mpR').textContent='한 번 더 누르면 올인';q('mpR').classList.add('armed');setTimeout(()=>{MP.armed=false},2500);return}MP.armed=false;mpAct('raise',MP.sel)};
+  el.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>MP.net.update(`rooms/${MP.room}/players/${MP.net.uid}`,{emote:{t:b.dataset.e,ts:MP.net.now()}}));
+  if(q('mpRebuy'))q('mpRebuy').onclick=()=>MP.net.update(`rooms/${MP.room}/players/${MP.net.uid}`,{rebuy:MP.net.now()})}
+setInterval(()=>{if(MP.state&&MP.state.phase==='play'&&!$('mpMode').hidden&&!document.activeElement?.matches?.('#mpAmt'))mpRender()},1000);
+
 /* ===== settings ===== */
 function reportText(){const a=loadReports();if(!a.length)return'';
   return `[홀덤의 바이블 · 신고 ${a.length}건]\n\n`+a.map((r,i)=>`### 신고 ${i+1} · 핸드 #${r.hand} · ${r.street} · ${r.engine}\n내 선택: ${r.choice} → ${({good:'좋은 선택',ok:'무난',bad:'실수'})[r.verdict]||r.verdict} / 엔진 추천: ${r.recommended}\n메모: ${r.note}\n\n${r.context}\n${r.chat?`\n[코치와의 대화]\n${r.chat}\n`:''}`).join('\n---\n\n')}
@@ -1519,6 +1738,7 @@ $('bRaise').onclick=()=>{if($('raisePanel').hidden)openRaise();else closeRaise()
 $('learnTgl').checked=G.learnPause;$('learnTgl').onchange=e=>{G.learnPause=e.target.checked;setPref('holdem-learnpause',G.learnPause)};
 $('hintBtn').onclick=()=>{G.hintShown=true;renderCoach()};
 document.addEventListener('keydown',e=>{if(e.metaKey||e.ctrlKey||e.altKey||e.target.tagName==='INPUT')return;const k=e.key.toLowerCase();
+  if(!$('mpMode').hidden)return;
   if(!$('huMap').hidden){if(k==='enter'&&$('huGo')){e.preventDefault();$('huGo').click()}return}
   if(!$('storyMode').hidden){if(k==='enter'){const b=$('sNext')||$('tNext')||$('tStart')||$('sGo')||$('tCh1');if(b){e.preventDefault();b.click()}}return}
   if(G.paused){if(k==='enter'){e.preventDefault();retryAct()}return}

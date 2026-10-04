@@ -1,0 +1,31 @@
+{
+  "rules": {
+    "rooms": {
+      "$code": {
+        ".read": "auth != null",
+        "meta": {
+          ".write": "auth != null && (!data.exists() || data.child('host').val() === auth.uid)"
+        },
+        "state": {
+          ".write": "auth != null && root.child('rooms').child($code).child('meta/host').val() === auth.uid"
+        },
+        "players": {
+          "$uid": { ".write": "auth != null && auth.uid === $uid" }
+        },
+        "actions": {
+          "$aid": {
+            ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid) || (!newData.exists() && root.child('rooms').child($code).child('meta/host').val() === auth.uid))"
+          }
+        }
+      }
+    },
+    "hands": {
+      "$code": {
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && root.child('rooms').child($code).child('meta/host').val() === auth.uid"
+        }
+      }
+    }
+  }
+}
