@@ -25,7 +25,7 @@ async def main():
         print('same daily questions on retry:',q1==q2)
         await pg.click('#sBack');await pg.wait_for_timeout(100)
         await pg.screenshot(path='/tmp/x_map.png')
-        await pg.select_option('#themeSel','blue');await pg.click('.mode[data-m="live"]');await pg.wait_for_timeout(1500)
+        await pg.click('#optBtn');await pg.select_option('#themeSel','blue');await pg.click('.mode[data-m="live"]');await pg.wait_for_timeout(1500)
         for i in range(20):
             if await pg.locator('#nextBtn').count(): await pg.click('#nextBtn')
             elif not await pg.locator('#bCall').is_disabled(): await pg.click('#bCall')

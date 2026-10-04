@@ -324,6 +324,35 @@ details.more[open]{display:flex;flex-direction:column;gap:8px}
 .rep form{display:flex;flex-direction:column;gap:6px;margin-top:6px}
 .rep textarea{font:inherit;font-size:14px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.3);color:var(--ink);resize:vertical;min-width:0}
 .repdone{font-size:12px;color:var(--good)}
+/* ---- phone layout: one-line header, tabs fixed at the bottom, action bar right above them ---- */
+:root{--navh:52px}
+body{padding-block:8px calc(var(--navh) + 16px + env(safe-area-inset-bottom,0px))}
+.wrap{gap:8px}
+header{align-items:center;flex-wrap:nowrap}
+h1{font-size:20px;white-space:nowrap}
+.hbtns{display:flex;gap:12px;align-items:center;white-space:nowrap}
+.opts{border-radius:12px;padding:10px 12px;background:var(--panel);border:1px solid var(--line)}
+.opts[hidden]{display:none}
+.modes{position:fixed;left:0;right:0;bottom:0;z-index:15;border-radius:0;background:#061812;border-top:1px solid var(--line);padding:6px max(8px,calc(50% - 300px)) calc(6px + env(safe-area-inset-bottom,0px))}
+.mode{font-size:14px;padding:9px 4px}
+.controls{bottom:calc(var(--navh) + env(safe-area-inset-bottom,0px));padding-bottom:6px}
+.meta{gap:2px 12px;font-size:10px}
+.meta div{display:flex;align-items:baseline;gap:4px;white-space:nowrap}
+.meta b{display:inline;font-size:12px}
+.ptable{width:min(100%,480px,calc((100dvh - 285px)*10/13))}
+.controls.raising .acts,.controls.raising .row2{display:none}
+.raisepanel{padding:8px;gap:6px}
+.raisepanel .size{padding:6px 4px}
+.step{width:36px;height:36px}
+.rpfoot .btn{min-height:50px;padding:8px 6px}
+.rpfoot .btn.back{flex:none;font-size:14px;padding-inline:14px}
+.rpfoot output{flex:1;font-size:13px;min-width:0}
+.rpfoot #bConfirm{flex:1.4;max-width:none}
+.meta{gap:2px 10px}.meta b{font-size:11px}.meta div{gap:3px}
+#ticker{margin-top:4px}
+.acts .btn small{white-space:nowrap}
+.help summary{cursor:pointer;text-decoration:underline}
+.help p{margin:6px 0 0}
 @media (max-width:420px){.card{--w:40px}.card.big{--w:54px}.card.sm{--w:21px}.seat .nm{font-size:12px}.btn{font-size:15px}}
 @media (prefers-reduced-motion:no-preference){.fb,.result{animation:pop .18s ease-out}@keyframes pop{from{transform:translateY(4px);opacity:.6}to{transform:none;opacity:1}}}
 </style>
@@ -331,8 +360,11 @@ details.more[open]{display:flex;flex-direction:column;gap:8px}
 <div class="wrap">
   <header>
     <h1>홀덤의 <span>바이블</span></h1>
-    <span class="hctl"><label class="npick" id="npLabel" for="npSel">인원 <select id="npSel"></select> · 블라인드 500/1,000</label><label class="npick" for="themeSel">테이블 <select id="themeSel"></select></label></span>
+    <span class="hbtns"><button class="link" id="optBtn" type="button" aria-expanded="false" aria-controls="opts">테이블 옵션</button></span>
   </header>
+  <div class="opts" id="opts" hidden>
+    <span class="hctl"><label class="npick" id="npLabel" for="npSel">인원 <select id="npSel"></select> · 블라인드 500/1,000</label><label class="npick" for="themeSel">테이블 <select id="themeSel"></select></label></span>
+  </div>
   <div id="welcome" class="welcome" hidden></div>
   <nav class="modes" role="tablist"><button class="mode" role="tab" data-m="live" aria-selected="true">실전</button><button class="mode" role="tab" data-m="hu" aria-selected="false">헤즈업</button><button class="mode" role="tab" data-m="story" aria-selected="false">스토리</button><button class="mode" role="tab" data-m="mp" aria-selected="false">친구와</button></nav>
   <section id="mpMode" hidden></section>
@@ -359,7 +391,7 @@ details.more[open]{display:flex;flex-direction:column;gap:8px}
     <div class="raisepanel" id="raisePanel" hidden>
       <div class="sizes" id="sizes"></div>
       <div class="slider"><button class="step" id="amtMinus" type="button" aria-label="줄이기">−</button><input type="range" id="amt" aria-label="레이즈 금액"><button class="step" id="amtPlus" type="button" aria-label="늘리기">+</button></div>
-      <div class="rpfoot"><output id="amtOut"></output><button class="btn prim" id="bConfirm" type="button">확인</button></div>
+      <div class="rpfoot"><button class="btn back" id="bCancel" type="button">취소</button><output id="amtOut"></output><button class="btn prim" id="bConfirm" type="button">확인</button></div>
     </div>
     <div class="acts">
       <button class="btn fold" id="bFold">폴드<small>F</small></button>
@@ -374,7 +406,7 @@ details.more[open]{display:flex;flex-direction:column;gap:8px}
   <div class="totals" id="totals"></div>
   <section id="histPanel" hidden></section>
   </div>
-  <footer>승률은 상대 카드를 모르니, 상대가 지금까지 한 액션(오픈·3벳·콜·벳)과 보드를 보고 "이런 패들을 들고 있겠다"를 추정한 뒤 그 패들과 수천 번 가상으로 붙여 본 결과입니다. 블러프·세미블러프는 상대가 폴드할 확률까지 넣은 기대값으로 판단하고, 상대가 한 명이면 턴·리버 베팅까지 시뮬레이션합니다. 상대가 여러 명이면 남은 베팅 없이 쇼다운까지 간다고 단순화합니다. 상대 성향은 코치 계산에 쓰지 않습니다. 해설 아래 입력창으로 그 결정에 대해 Claude에게 바로 질문하고 토론할 수 있습니다(본인 Claude 사용량이 쓰입니다). 리바인은 1회 30,000칩씩, 총 150,000까지(5번) 가능합니다. AI도 리바인은 1회 30,000칩씩 총 150,000까지이고, 다 쓰고 파산하면 테이블에서 빠집니다. AI가 모두 빠지면 우승입니다. 인원을 바꾸면 새 세션이 시작됩니다.</footer>
+  <footer><details class="help"><summary>계산 방식 · 리바인 규칙</summary><p>승률은 상대 카드를 모르니, 상대가 지금까지 한 액션(오픈·3벳·콜·벳)과 보드를 보고 "이런 패들을 들고 있겠다"를 추정한 뒤 그 패들과 수천 번 가상으로 붙여 본 결과입니다. 블러프·세미블러프는 상대가 폴드할 확률까지 넣은 기대값으로 판단하고, 상대가 한 명이면 턴·리버 베팅까지 시뮬레이션합니다. 상대가 여러 명이면 남은 베팅 없이 쇼다운까지 간다고 단순화합니다. 상대 성향은 코치 계산에 쓰지 않습니다. 해설 아래 입력창으로 그 결정에 대해 Claude에게 바로 질문하고 토론할 수 있습니다(본인 Claude 사용량이 쓰입니다). 리바인은 1회 30,000칩씩, 총 150,000까지(5번) 가능합니다. AI도 리바인은 1회 30,000칩씩 총 150,000까지이고, 다 쓰고 파산하면 테이블에서 빠집니다. AI가 모두 빠지면 우승입니다. 인원을 바꾸면 새 세션이 시작됩니다.</p></details></footer>
 </div>
 
 <script>
@@ -830,11 +862,11 @@ function setupControls(p,keepPanel){
   $('sizes').querySelectorAll('.size').forEach(b=>b.onclick=()=>setAmt(+b.dataset.v));
   amt.oninput=()=>setAmt(+amt.value);
   $('amtMinus').onclick=()=>setAmt(sel.to-BBA/2);$('amtPlus').onclick=()=>setAmt(sel.to+BBA/2);
-  $('bRaise').disabled=!canRaise;$('bRaise').innerHTML=canRaise?`${minTo>=maxTo?'올인':verb}<small>R · 크기 고르기</small>`:verb+'<small>불가</small>';
+  $('bRaise').disabled=!canRaise;$('bRaise').innerHTML=canRaise?`${minTo>=maxTo?'올인':verb}<small>크기 고르기</small>`:verb+'<small>불가</small>';
   if(!keepPanel)closeRaise();
   $('hintBtn').disabled=false;$('waitTxt').textContent='내 차례입니다'}
-function openRaise(){if($('bRaise').disabled)return;$('raisePanel').hidden=false;$('bRaise').classList.add('open')}
-function closeRaise(){$('raisePanel').hidden=true;$('bRaise').classList.remove('open')}
+function openRaise(){if($('bRaise').disabled)return;$('raisePanel').hidden=false;$('bRaise').classList.add('open');$('controls').classList.add('raising')}
+function closeRaise(){$('raisePanel').hidden=true;$('bRaise').classList.remove('open');$('controls').classList.remove('raising')}
 function lockControls(msg){['bFold','bCall','bRaise','hintBtn'].forEach(id=>$(id).disabled=true);closeRaise();$('amt').disabled=true;$('sizes').innerHTML='';$('waitTxt').textContent=msg||'';$('amtOut').textContent=''}
 
 function heroAct(t){const w=G.heroWait;if(!w||G.paused)return;const p=w.p;
@@ -862,7 +894,7 @@ const backHTML=cls=>`<div class="card back ${cls}"></div>`;
 function render(){syncNP();if(G.hu)renderHUBanner();
   const hero=G.players[0];
   const net=hero.stack+(G.result?0:hero.total)-G.invested;
-  $('meta').innerHTML=`<div>핸드<b>#${G.hand}</b></div><div>내 스택<b>${fmt(hero.stack)}</b></div><div>손익<b class="${net>0?'pos':net<0?'neg':''}">${net>0?'+':''}${fmt(net)}</b></div><div>리바인 잔여<b>${fmt(G.rebuyLeft)}</b></div><div>레이팅<b>${ratingText()}</b></div>`;
+  $('meta').innerHTML=`<div><b>#${G.hand}</b></div><div>스택<b>${fmt(hero.stack)}</b></div><div>손익<b class="${net>0?'pos':net<0?'neg':''}">${net>0?'+':''}${fmt(net)}</b></div><div>리바인<b>${fmt(G.rebuyLeft)}</b></div><div><b>${ratingText()}</b></div>`;
   const winCards=new Set();if(G.showdown&&G.result)G.winners.forEach(i=>best5([...G.players[i].cards,...G.board]).forEach(c=>winCards.add(c)));
   /* seats around an oval: hero at the bottom, the rest clockwise (to the hero's left first) */
   const N=NPN(),CX=50,CY=45,RX=N>=7?38:40,RY=37;const at=k=>{const t=(90+k*360/N)*Math.PI/180;return[Math.cos(t),Math.sin(t)]};
@@ -1672,7 +1704,8 @@ setInterval(()=>{if(MP.state&&MP.state.phase==='play'&&!$('mpMode').hidden&&!doc
 
 /* ===== input ===== */
 $('bFold').onclick=()=>heroAct('fold');$('bCall').onclick=()=>heroAct('call');
-$('bRaise').onclick=()=>{if($('raisePanel').hidden)openRaise();else closeRaise()};$('bConfirm').onclick=()=>heroAct('raise');
+$('bRaise').onclick=()=>{if($('raisePanel').hidden)openRaise();else closeRaise()};$('bConfirm').onclick=()=>heroAct('raise');$('bCancel').onclick=closeRaise;
+$('optBtn').onclick=()=>{const el=$('opts');el.hidden=!el.hidden;$('optBtn').setAttribute('aria-expanded',String(!el.hidden))};
 $('learnTgl').checked=G.learnPause;$('learnTgl').onchange=e=>{G.learnPause=e.target.checked;setPref('holdem-learnpause',G.learnPause)};
 $('hintBtn').onclick=()=>{G.hintShown=true;renderCoach()};
 document.addEventListener('keydown',e=>{if(e.metaKey||e.ctrlKey||e.altKey||e.target.tagName==='INPUT')return;const k=e.key.toLowerCase();

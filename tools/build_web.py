@@ -63,9 +63,10 @@ R('신고했습니다. Claude 대화창에서 "신고한 해설 확인해줘"라
   "신고를 저장했습니다. 위쪽 '설정 → 신고 목록'에서 공유하거나 복사해 Claude에게 보내면 엔진을 고칠 수 있어요.")
 
 # ---- settings panel ----
-R("  <nav class=",
-  """  <div class="setrow"><button class="link" id="setBtn" aria-expanded="false" aria-controls="settings">설정 · 신고 목록</button></div>
-  <section class="settings" id="settings" hidden>
+R('<span class="hbtns">',
+  '<span class="hbtns"><button class="link" id="setBtn" type="button" aria-expanded="false" aria-controls="settings">설정 · 신고 목록</button>')
+R('  <div id="welcome"',
+  """  <section class="settings" id="settings" hidden>
     <div class="sgroup">
       <label for="keyIn">Anthropic API 키 <span class="ctx">해설에 대해 질문할 때만 쓰입니다. 이 폰에만 저장돼요.</span></label>
       <div class="ask"><input id="keyIn" type="password" autocomplete="off" placeholder="sk-ant-..."><button class="btn sendbtn" id="keySave" type="button">저장</button></div>
@@ -80,9 +81,8 @@ R("  <nav class=",
       <div id="repList" class="replist"></div>
     </div>
   </section>
-  <nav class=""")
+  <div id="welcome\"""")
 R("footer{font-size:11px;color:var(--muted)}", """footer{font-size:11px;color:var(--muted)}
-.setrow{display:flex;justify-content:flex-end;margin-top:-6px}
 .settings{border-radius:14px;padding:14px;background:var(--panel);border:1px solid var(--line);display:flex;flex-direction:column;gap:16px}
 .sgroup{display:flex;flex-direction:column;gap:6px}
 .sgroup label,.shead{font-size:13px;font-weight:700;display:flex;flex-direction:column;gap:2px}
