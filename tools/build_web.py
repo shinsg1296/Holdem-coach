@@ -93,7 +93,7 @@ R("footer{font-size:11px;color:var(--muted)}", """footer{font-size:11px;color:va
 .replist div{border-top:1px solid var(--line);padding-top:4px}""")
 R("/* ===== input ===== */", r"""/* ===== settings ===== */
 function reportText(){const a=loadReports();if(!a.length)return'';
-  return `[홀덤 실전 코치 · 신고 ${a.length}건]\n\n`+a.map((r,i)=>`### 신고 ${i+1} · 핸드 #${r.hand} · ${r.street} · ${r.engine}\n내 선택: ${r.choice} → ${({good:'좋은 선택',ok:'무난',bad:'실수'})[r.verdict]||r.verdict} / 엔진 추천: ${r.recommended}\n메모: ${r.note}\n\n${r.context}\n${r.chat?`\n[코치와의 대화]\n${r.chat}\n`:''}`).join('\n---\n\n')}
+  return `[홀덤의 바이블 · 신고 ${a.length}건]\n\n`+a.map((r,i)=>`### 신고 ${i+1} · 핸드 #${r.hand} · ${r.street} · ${r.engine}\n내 선택: ${r.choice} → ${({good:'좋은 선택',ok:'무난',bad:'실수'})[r.verdict]||r.verdict} / 엔진 추천: ${r.recommended}\n메모: ${r.note}\n\n${r.context}\n${r.chat?`\n[코치와의 대화]\n${r.chat}\n`:''}`).join('\n---\n\n')}
 function renderSettings(){const a=loadReports();$('repCount').textContent=`${a.length}건`;
   $('repList').innerHTML=a.slice(-5).reverse().map(r=>`<div>핸드 #${r.hand} · ${r.street} · ${esc(r.choice)} · ${esc(String(r.note).slice(0,40))}</div>`).join('');
   ['repShare','repCopy','repClear'].forEach(id=>$(id).disabled=!a.length)}
