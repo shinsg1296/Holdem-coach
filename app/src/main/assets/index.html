@@ -1517,6 +1517,7 @@ document.querySelectorAll('.mode').forEach(b=>b.onclick=()=>setMode(b.dataset.m)
 /* ===== online multiplayer with friends (Firebase Realtime Database) =====
    The room creator's phone is the dealer: it shuffles, deals, checks every action and settles pots.
    Each player's hole cards are written to /hands/<room>/<uid>, which security rules let only that player read. */
+const FB_DEFAULT={apiKey:"AIzaSyDw8QMlPcnfqy8kvfh5-1DLK_wvm0n-5tM",authDomain:"hawe-holdem.firebaseapp.com",databaseURL:"https://hawe-holdem-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"hawe-holdem",storageBucket:"hawe-holdem.firebasestorage.app",messagingSenderId:"191932394647",appId:"1:191932394647:web:4b7154c639073c07ebcdd2"};
 const MP_MAX=8,MP_EMOTES=['나이스 핸드','블러프지?','콜 하시죠','올인 각','다음 판 간다','ㅋㅋㅋ'];
 const MPCFG_KEY='holdem-fbcfg',MPNAME_KEY='holdem-mpname';
 const mpCfg=()=>{try{return JSON.parse(localStorage.getItem(MPCFG_KEY)||'null')||(typeof FB_DEFAULT!=='undefined'?FB_DEFAULT:null)}catch(e){return null}};
@@ -1546,6 +1547,9 @@ async function makeFirebaseNet(cfg){
     onDisconnectSet(path,v){db.ref(path).onDisconnect().set(v)}}}
 /* ---- host engine (pure state changes; only the host runs it) ---- */
 const MPH={deck:null,code:null,unsub:[],timer:null,nextAt:0,busy:false};
+/* Realtime Database drops empty arrays and objects, so a state read back from it has to get them back */
+function mpNorm(S){if(!S)return S;for(const k of['order','seats','board','log'])if(!Array.isArray(S[k]))S[k]=S[k]?Object.values(S[k]):[];
+  for(const k of['stacks','buyins','names','rebuyDone','shown'])if(!S[k])S[k]={};if(S.result){S.result.lines=S.result.lines||[];S.result.winners=S.result.winners||[]}return S}
 function mpSeatsFrom(S,players){const ids=S.order.filter(u=>players[u]&&players[u].online!==false&&(S.stacks[u]||0)>0);return ids}
 function mpStartHand(S,players){const ids=mpSeatsFrom(S,players);if(ids.length<2){S.phase='lobby';S.note='칩이 있는 접속자가 2명 이상이어야 시작돼요.';return false}
   const prevBtnUid=S.seats&&S.seats[S.button]?S.seats[S.button].uid:null;
@@ -1632,10 +1636,10 @@ async function mpJoin(code,asHost){const N=await mpConnect();code=String(code||'
   await N.set(`rooms/${code}/players/${N.uid}`,{name,online:true,joined:N.now()});N.onDisconnectSet(`rooms/${code}/players/${N.uid}/online`,false);
   MP.unsub.push(N.on(`rooms/${code}/players`,v=>{MP.players=v||{};if(MP.isHost)mpHostTick();mpRender()}));
   MP.unsub.push(N.on(`hands/${code}/${N.uid}`,v=>{MP.hole=v;mpRender()}));
-  if(MP.isHost){if(asHost)await mpPublish();else{MP.state=await N.get(`rooms/${code}/state`);const S=MP.state;
+  if(MP.isHost){if(asHost)await mpPublish();else{MP.state=mpNorm(await N.get(`rooms/${code}/state`));const S=MP.state;
       if(S&&S.phase==='play'){S.seats.forEach(x=>{S.stacks[x.uid]=x.stack+x.total});S.phase='lobby';S.running=false;S.note='방장이 다시 들어와서 진행 중이던 핸드는 무효 처리했어요(칩 반환).';await mpPublish()}}
     MP.unsub.push(N.on(`rooms/${code}/actions`,mpOnAction));clearInterval(MPH.timer);MPH.timer=setInterval(mpHostTick,500)}
-  else MP.unsub.push(N.on(`rooms/${code}/state`,v=>{MP.state=v;mpRender()}));
+  else MP.unsub.push(N.on(`rooms/${code}/state`,v=>{MP.state=mpNorm(v);mpRender()}));
   try{localStorage.setItem('holdem-mproom',code)}catch(e){}mpRender()}
 async function mpLeave(){if(MP.net&&MP.room)await MP.net.update(`rooms/${MP.room}/players/${MP.net.uid}`,{online:false});
   MP.unsub.forEach(f=>f());MP.unsub=[];clearInterval(MPH.timer);MP.room=null;MP.state=null;MP.hole=null;MP.isHost=false;try{localStorage.removeItem('holdem-mproom')}catch(e){}mpRender()}
