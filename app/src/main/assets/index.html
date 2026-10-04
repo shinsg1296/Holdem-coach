@@ -362,6 +362,26 @@ h1{font-size:20px;white-space:nowrap}
 .acts .btn small{white-space:nowrap}
 .help summary{cursor:pointer;text-decoration:underline}
 .help p{margin:6px 0 0}
+/* ---- verdict badge and EV loss ---- */
+.fb .top{align-items:center}
+.vbadge{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font:800 13px/1 var(--f-body);color:#06241a;background:var(--muted)}
+.vbadge.best{background:#3fe08a}.vbadge.good{background:#8fd4a8}.vbadge.inacc{background:var(--ok)}.vbadge.mistake{background:#ff9a5a}.vbadge.blunder{background:var(--bad);color:#fff}
+.evchip{font-family:var(--f-mono);font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;background:rgba(0,0,0,.3);color:var(--good);white-space:nowrap}
+.evchip.neg{color:var(--bad)}
+/* ---- story map as a path ---- */
+.spath{display:flex;flex-direction:column;gap:6px;position:relative}
+.spath::before{content:"";position:absolute;left:32px;top:24px;bottom:24px;width:2px;background:var(--line)}
+.spath .scard{grid-template-columns:40px 1fr auto;align-items:center;gap:0 12px;padding:8px 12px;position:relative}
+.spath .snum{grid-row:span 2;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:20px;background:#0b1d16;border:2px solid var(--line);color:var(--muted)}
+.spath .stitle,.spath .stag{grid-column:2}
+.spath .sstars{grid-column:3;grid-row:1/3;display:flex;align-items:center}
+.spath .scard.done .snum{background:var(--good);border-color:var(--good);color:#06241a}
+.spath .scard.cur{border-color:var(--brass);background:linear-gradient(135deg,#1d3b2f,var(--panel))}
+.spath .scard.cur .snum{border-color:var(--brass);color:var(--brass)}
+.spath .scard.boss .snum{border-style:double;border-width:4px}
+.scard:disabled,.hucard:disabled{opacity:.55}
+.sgo{font-family:var(--f-body);font-size:12px;font-weight:700;letter-spacing:0;background:var(--brass);color:var(--brass-ink);padding:4px 12px;border-radius:999px}
+.lockic{display:block;color:var(--muted)}
 /* ---- seats with avatars, readable folded seats ---- */
 .ptop{display:flex;justify-content:center;align-items:flex-end;height:34px;margin-bottom:-7px}
 .ptop .pcards{height:auto;margin:0 0 0 -4px}
@@ -384,6 +404,7 @@ h1{font-size:20px;white-space:nowrap}
 .card.fd1{animation-delay:.13s}.card.fd2{animation-delay:.26s}
 @keyframes flip{from{transform:rotateY(88deg);opacity:.3}}
 .pseat.turn .pav{animation:ring 1.3s ease-in-out infinite}
+.spath .scard.cur .snum{animation:ring 1.6s ease-in-out infinite;box-shadow:0 0 0 2px var(--brass),0 0 10px rgba(217,181,92,.6)}
 @keyframes ring{50%{box-shadow:0 0 0 2px var(--brass),0 0 3px rgba(217,181,92,.25)}}
 .pseat.won .pbox,.phero.won .pbox{animation:wonp .8s ease-in-out 3}
 @keyframes wonp{50%{box-shadow:0 0 0 2px var(--good),0 0 18px rgba(95,208,138,.85)}}
@@ -1001,7 +1022,7 @@ function fbHTML(f,isLatest){
   const {A,gr,label,street}=f;const V=LVN[gr.lv]||{good:'좋은 선택',ok:'무난',bad:'실수'}[gr.g];
   const bestLbl=A.bestOpt?A.bestOpt.label:ALABEL[A.best];
     const ranges=A.ranges.map(r=>`${r.name}: ${r.desc}`).join('<br>');
-  return `<div class="fb ${gr.g} lv-${gr.lv||''}"><div class="top"><span class="verdict">${V}</span><span class="ctx">${street} · ${A.pos} · 내 선택 <strong>${label}</strong> · 추천 <strong>${bestLbl}</strong>${gr.dr!==undefined?` · <span class="rdelta ${gr.dr>=0?'pos':'neg'}">레이팅 ${gr.dr>=0?'+':''}${gr.dr}</span>`:''}</span></div>
+  return `<div class="fb ${gr.g} lv-${gr.lv||''}"><div class="top">${LVI[gr.lv]?`<span class="vbadge ${gr.lv}" aria-hidden="true">${LVI[gr.lv]}</span>`:''}<span class="verdict">${V}</span>${A.kind==='ev'&&gr.loss!==undefined?`<span class="evchip ${gr.loss>0?'neg':''}" title="최선의 선택과 비교한 기대값 차이">${gr.loss>0?'−'+bb(gr.loss):'손실 없음'}</span>`:''}<span class="ctx">${street} · ${A.pos} · 내 선택 <strong>${label}</strong> · 추천 <strong>${bestLbl}</strong>${gr.dr!==undefined?` · <span class="rdelta ${gr.dr>=0?'pos':'neg'}">레이팅 ${gr.dr>=0?'+':''}${gr.dr}</span>`:''}</span></div>
    <p>${A.reason}</p>
    ${gr.notes.map(n=>`<div class="note">${n}</div>`).join('')}
    ${gr.loss>0&&A.kind==='ev'?`<p class="lossline">최선보다 <strong>${bb(gr.loss)}</strong> 손해예요.</p>`:''}
@@ -1169,6 +1190,7 @@ function resume(s){NP=s.np||s.players.length;initPlayers();
 function syncNP(){const sel=$('npSel');if(sel&&!G.pendingNP)sel.value=String(NP)}
 /* ===== UX layer: verdict tiers, session log, history, equity, seat info ===== */
 const LVN={best:'최선',good:'좋음',inacc:'부정확',mistake:'실수',blunder:'큰 실수'};
+const LVI={best:'★',good:'✓',inacc:'?!',mistake:'?',blunder:'??'};
 const LV0=()=>({best:0,good:0,inacc:0,mistake:0,blunder:0});
 const newStats=()=>({hands:0,dec:0,good:0,ok:0,bad:0,lv:LV0()});
 const pref=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:v==='1'}catch(e){return d}};
@@ -1303,7 +1325,7 @@ function huMap(){const p=huProg();const tot=HU_LEVELS.reduce((s,_,i)=>s+(p[i]||0
   $('huMap').innerHTML=`<div class="smap"><div class="shdr"><h2>헤즈업 도전</h2><span class="stot">${tot} / ${HU_LEVELS.length*3} ★</span></div>
    <p class="ctx">1:1로 붙어 상대 칩을 모두 따면 클리어. 둘 다 ${fmt(HU_STACK)}칩으로 시작하고, ${HU_LEVEL_HANDS}핸드마다 블라인드가 오릅니다. 리바인은 없어요. 단계가 오를수록 상대가 변칙적으로 치고, 당신의 습관을 더 빨리 읽고 공략합니다. 이기면 판단 점수로 별을 받습니다(85점 ★3 · 70점 ★2 · 그 아래 ★1).</p>
    <div class="hugrid">${HU_LEVELS.map((lv,i)=>{const open=i===0||(p[i-1]||0)>=1,got=p[i]||0;
-     return `<button class="hucard ${lv.boss?'boss':''}" data-i="${i}" ${open?'':'disabled'}><span class="snum">${i+1}</span><span class="stitle">${lv.name} <span class="stag">${lv.sty}</span></span><span class="hudesc">${open?lv.desc:'이전 단계를 깨면 열립니다.'}</span><span class="hufoot"><span class="readbar" title="읽는 능력"><i style="width:${lv.read*100}%"></i></span><span class="sstars ${got?'got':''}">${open?STAR(got):'잠김'}</span></span></button>`}).join('')}</div>
+     return `<button class="hucard ${lv.boss?'boss':''}" data-i="${i}" ${open?'':'disabled'}><span class="snum">${i+1}</span><span class="stitle">${lv.name} <span class="stag">${lv.sty}</span></span><span class="hudesc">${open?lv.desc:'이전 단계를 깨면 열립니다.'}</span><span class="hufoot"><span class="readbar" title="읽는 능력"><i style="width:${lv.read*100}%"></i></span><span class="sstars ${got?'got':''}">${open?STAR(got):LOCK}</span></span></button>`}).join('')}</div>
    ${(()=>{const L=lifeRead();return L.hands?`<p class="ctx">지금까지 헤즈업 ${L.hands}핸드. 필 아이비는 이 기록을 모두 알고 시작합니다.</p>`:''})()}
    <p class="ctx">실제 선수들의 별명과 알려진 스타일을 모티브로 한 AI 캐릭터입니다. 실제 선수의 플레이와는 다릅니다.</p></div>`;
   $('huMap').querySelectorAll('.hucard').forEach(b=>b.onclick=()=>huIntro(+b.dataset.i))}
@@ -1342,6 +1364,10 @@ const ssave=p=>{try{localStorage.setItem(SKEY,JSON.stringify(p))}catch(e){}};
 const scard=s=>'23456789TJQKA'.indexOf(s[0])*4+'shdc'.indexOf(s[1]);
 const scards=s=>s?s.trim().split(/\s+/).map(scard):[];
 const STAR=n=>'★'.repeat(n)+'☆'.repeat(3-n);
+const LOCK='<svg class="lockic" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" role="img" aria-label="잠김"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+/* one row of the story path: done, current (first open stage without a star) or locked */
+const pathState=(open,got)=>open?(got?'done':'cur'):'lock';
+const pathEnd=(open,got)=>`<span class="sstars ${got?'got':''}">${open?(got?STAR(got):'<span class="sgo">시작</span>'):LOCK}</span>`;
 let SV={stage:null,node:null,picks:[],chosen:null};
 function money(n,bb){return n.unit?fmt(bb*n.unit):(Math.round(bb*10)/10)+'BB'}
 function storyMap(){const p=sprog();LV=null;
@@ -1351,12 +1377,12 @@ function storyMap(){const p=sprog();LV=null;
    ${dailyCard()}
    <div class="shdr"><h2>튜토리얼 · ${TUT.title}</h2><span class="stot">${tTot} / ${TUT.stages.length*3} ★</span></div>
    <p class="ctx">홀덤이 처음이라면 여기서 시작하세요. 룰과 족보를 배우고 바로 문제로 연습합니다. 정답률 90% ★3 · 70% ★2 · 50% ★1. 이미 안다면 <button class="link" id="placeBtn">실력 확인 6문제</button>로 건너뛸 수 있어요.</p>
-   <div class="sgrid">${TUT.stages.map((s,i)=>{const open=i===0||(p[TUT.stages[i-1].id]||0)>=1;const got=p[s.id]||0;
-     return `<button class="scard tut" data-t="${s.id}" ${open?'':'disabled'}><span class="snum">${i+1}</span><span class="stitle">${s.title}</span><span class="stag">${s.tag}</span><span class="sstars ${got?'got':''}">${open?STAR(got):'잠김'}</span></button>`}).join('')}</div>
+   <div class="spath">${TUT.stages.map((s,i)=>{const open=i===0||(p[TUT.stages[i-1].id]||0)>=1;const got=p[s.id]||0;
+     return `<button class="scard tut ${pathState(open,got)}" data-t="${s.id}" ${open?'':'disabled'}><span class="snum">${i+1}</span><span class="stitle">${s.title}</span><span class="stag">${s.tag}</span>${pathEnd(open,got)}</button>`}).join('')}</div>
    <div class="shdr"><h2>${STORY.chapter}장 · ${STORY.title}</h2><span class="stot">${tot} / ${STORY.stages.length*3} ★</span></div>
    <p class="ctx">각 스테이지는 실제 상황 하나를 두고 "나였으면 어떻게 했을까"를 고르는 문제입니다. 계산상 최선이면 ★3, 손실이 작으면 ★2, 큰 실수가 있어도 끝까지 가면 ★1, 아주 큰 실수는 실패예요. ★1 이상이면 다음 스테이지가 열립니다.</p>
-   <div class="sgrid">${STORY.stages.map((s,i)=>{const open=i===0||(p[STORY.stages[i-1].id]||0)>=1;const got=p[s.id]||0;
-     return `<button class="scard ${s.real?'boss':''}" data-id="${s.id}" ${open?'':'disabled'}><span class="snum">${s.id}</span><span class="stitle">${s.title}</span><span class="stag">${s.tag}</span><span class="sstars ${got?'got':''}">${open?STAR(got):'잠김'}</span></button>`}).join('')}</div></div>`;
+   <div class="spath">${STORY.stages.map((s,i)=>{const open=i===0||(p[STORY.stages[i-1].id]||0)>=1;const got=p[s.id]||0;
+     return `<button class="scard ${s.real?'boss':''} ${pathState(open,got)}" data-id="${s.id}" ${open?'':'disabled'}><span class="snum">${s.id}</span><span class="stitle">${s.title}</span><span class="stag">${s.tag}</span>${pathEnd(open,got)}</button>`}).join('')}</div></div>`;
   $('storyMode').querySelectorAll('.scard[data-id]').forEach(b=>b.onclick=()=>startStage(+b.dataset.id));
   $('storyMode').querySelectorAll('.scard[data-t]').forEach(b=>b.onclick=()=>startLesson(b.dataset.t));
   $('dailyBtn').onclick=()=>startLesson('daily');$('placeBtn').onclick=()=>startLesson('place')}
