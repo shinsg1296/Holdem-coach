@@ -362,6 +362,34 @@ h1{font-size:20px;white-space:nowrap}
 .acts .btn small{white-space:nowrap}
 .help summary{cursor:pointer;text-decoration:underline}
 .help p{margin:6px 0 0}
+/* ---- the hand is over: one clear way forward in the action bar ---- */
+.cta{display:none}
+.controls.over .acts,.controls.over .row2{display:none}
+.controls.over .cta{display:block}
+.cta>.btn{width:100%;min-height:58px}
+.cta .sopts{grid-template-columns:repeat(auto-fit,minmax(90px,1fr))}
+#tStart,#tNext,#sNext,#huGo{position:sticky;bottom:calc(var(--navh) + 8px + env(safe-area-inset-bottom,0px));z-index:5;box-shadow:0 0 0 8px var(--room),0 -10px 18px 8px var(--room)}
+@media (hover:none),(pointer:coarse){.kh{display:none!important}}
+/* ---- small text controls look like controls ---- */
+.link{text-decoration:none;color:var(--ink);font-size:12px;padding:5px 11px;border-radius:999px;border:1px solid var(--line);background:rgba(0,0,0,.22);white-space:nowrap}
+.link:active{background:rgba(255,255,255,.08)}
+p .link,.ctx .link{padding:1px 9px}
+.hbtns{gap:6px}
+.meta{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:5px 10px;justify-content:space-between;flex-wrap:nowrap}
+.totals{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 12px;gap:6px 12px}
+.totals .link{margin-left:auto}
+.tgl{padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:rgba(0,0,0,.22);color:var(--ink)}
+.hist{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 12px}
+.histbtn{padding:6px 0;border-top:1px solid var(--line);width:100%}
+footer{padding-top:2px}
+.help summary{display:inline-block;list-style:none;text-decoration:none;font-size:12px;color:var(--ink);padding:5px 11px;border-radius:999px;border:1px solid var(--line);background:rgba(0,0,0,.22)}
+.help summary::-webkit-details-marker{display:none}
+.help p{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:12px}
+details.more summary,.notes summary{list-style:none;display:inline-block;font-size:12px;padding:5px 11px;border-radius:999px;border:1px solid var(--brass)}
+details.more summary::-webkit-details-marker,.notes summary::-webkit-details-marker{display:none}
+.rep summary{text-decoration:none;display:inline-block;color:var(--ink);padding:5px 11px;border-radius:999px;border:1px solid var(--line);background:rgba(0,0,0,.22)}
+.mpbar{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:5px 10px}
+.mpbtns{gap:6px}
 /* ---- multiplayer: turn timer ---- */
 .pav.timer::before{content:"";position:absolute;inset:-6px;border-radius:50%;background:conic-gradient(var(--brass) calc(var(--p)*1%),rgba(0,0,0,.45) 0);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px))}
 .pav.timer.low::before{background:conic-gradient(var(--bad) calc(var(--p)*1%),rgba(0,0,0,.45) 0)}
@@ -426,7 +454,7 @@ h1{font-size:20px;white-space:nowrap}
 <div class="wrap">
   <header>
     <h1>홀덤의 <span>바이블</span></h1>
-    <span class="hbtns"><button class="link" id="setBtn" type="button" aria-expanded="false" aria-controls="settings">설정 · 신고 목록</button><button class="link" id="optBtn" type="button" aria-expanded="false" aria-controls="opts">테이블 옵션</button></span>
+    <span class="hbtns"><button class="link" id="setBtn" type="button" aria-expanded="false" aria-controls="settings">설정</button><button class="link" id="optBtn" type="button" aria-expanded="false" aria-controls="opts">테이블</button></span>
   </header>
   <div class="opts" id="opts" hidden>
     <span class="hctl"><label class="npick" id="npLabel" for="npSel">인원 <select id="npSel"></select> · 블라인드 500/1,000</label><label class="npick" for="themeSel">테이블 <select id="themeSel"></select></label></span>
@@ -475,11 +503,12 @@ h1{font-size:20px;white-space:nowrap}
       <div class="rpfoot"><button class="btn back" id="bCancel" type="button">취소</button><output id="amtOut"></output><button class="btn prim" id="bConfirm" type="button">확인</button></div>
     </div>
     <div class="acts">
-      <button class="btn fold" id="bFold">폴드<small>F</small></button>
-      <button class="btn" id="bCall">체크<small>C</small></button>
-      <button class="btn prim" id="bRaise">레이즈<small>R</small></button>
+      <button class="btn fold" id="bFold">폴드<small class="kh">F</small></button>
+      <button class="btn" id="bCall">체크<small class="kh">C</small></button>
+      <button class="btn prim" id="bRaise">레이즈<small class="kh">R</small></button>
     </div>
-    <div class="row2"><span class="wait" id="waitTxt"></span><span class="row2r"><label class="tgl"><input type="checkbox" id="learnTgl"> 실수하면 멈춤</label><button class="link" id="hintBtn">힌트 (H)</button></span></div>
+    <div class="cta" id="cta"></div>
+    <div class="row2"><span class="wait" id="waitTxt"></span><span class="row2r"><label class="tgl"><input type="checkbox" id="learnTgl"> 실수하면 멈춤</label><button class="link" id="hintBtn">힌트<span class="kh"> (H)</span></button></span></div>
   </section>
 
   <div id="resultBox"></div>
@@ -867,7 +896,7 @@ async function bettingRound(start,ep){
 function newDeck(){const d=[...Array(52).keys()];for(let i=51;i>0;i--){const j=Math.random()*(i+1)|0;[d[i],d[j]]=[d[j],d[i]]}return d}
 
 async function playHand(ep){
-  G.hand++;G.stats.hands++;G.showdown=false;G.winners=new Set();G.handFb=[];G.focus=0;G.result=null;G.actLog=[];$('resultBox').innerHTML='';
+  G.hand++;G.stats.hands++;G.showdown=false;G.winners=new Set();G.handFb=[];G.focus=0;G.result=null;G.actLog=[];clearResult();
   for(let j=G.players.length-1;j>=1;j--)if(G.players[j].eliminated){G.players.splice(j,1);const N=G.players.length;
     if(j<G.button)G.button--;else if(j===G.button)G.button=(j-1+N)%N}
   if(G.button>=G.players.length)G.button=0;
@@ -921,8 +950,8 @@ function setupControls(p,keepPanel){
   const toCall=G.currentBet-p.bet,maxTo=p.bet+p.stack,pot=potTotal();
   let minTo=G.currentBet===0?BBA:G.currentBet+G.minRaise;minTo=Math.min(minTo,maxTo);
   const canRaise=maxTo>G.currentBet;
-  $('bFold').disabled=false;$('bFold').innerHTML=toCall===0?'폴드<small>F · 체크 가능</small>':'폴드<small>F</small>';
-  $('bCall').innerHTML=toCall===0?'체크<small>C</small>':(toCall>=p.stack?'올인 콜':'콜')+`<small>C · ${fmt(Math.min(toCall,p.stack))}</small>`;
+  $('bFold').disabled=false;$('bFold').innerHTML=toCall===0?'폴드<small><span class="kh">F · </span>체크 가능</small>':'폴드<small class="kh">F</small>';
+  $('bCall').innerHTML=toCall===0?'체크<small class="kh">C</small>':(toCall>=p.stack?'올인 콜':'콜')+`<small><span class="kh">C · </span>${fmt(Math.min(toCall,p.stack))}</small>`;
   $('bCall').disabled=false;
   const presets=[];
   if(G.street===0&&G.numRaises===0){[2,2.5,3].forEach(x=>presets.push([`${x}BB`,x*BBA]))}
@@ -938,7 +967,7 @@ function setupControls(p,keepPanel){
   function setAmt(v){v=clampV(v);sel.to=v;amt.value=v;G.allinArmed=false;$('bConfirm').classList.remove('armed');
     $('amtOut').innerHTML=`<strong>${fmt(v)}</strong> <span class="ctx">${bb(v)}${pot?` · 팟의 ${Math.round((v-p.bet)/Math.max(1,pot)*100)}%`:''}</span>`;
     $('sizes').querySelectorAll('.size').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.v===v));
-    $('bConfirm').innerHTML=(v>=maxTo?'올인':verb)+` ${fmt(v)}<small>확인 · R</small>`}
+    $('bConfirm').innerHTML=(v>=maxTo?'올인':verb)+` ${fmt(v)}<small>확인<span class="kh"> · R</span></small>`}
   setAmt(sel.to&&keepPanel?sel.to:presets[0][1]);
   $('sizes').querySelectorAll('.size').forEach(b=>b.onclick=()=>setAmt(+b.dataset.v));
   amt.oninput=()=>setAmt(+amt.value);
@@ -982,7 +1011,7 @@ function render(){syncNP();if(G.hu)renderHUBanner();
   const deal=!!hero.cards&&AN.hand!==G.hand&&!G.board.length&&!G.result;if(hero.cards)AN.hand=G.hand;
   const b0=AN.bh===G.hand?AN.board:0;AN.bh=G.hand;AN.board=G.board.length;
   const net=hero.stack+(G.result?0:hero.total)-G.invested;
-  $('meta').innerHTML=`<div><b>#${G.hand}</b></div><div>스택<b>${fmt(hero.stack)}</b></div><div>손익<b class="${net>0?'pos':net<0?'neg':''}">${net>0?'+':''}${fmt(net)}</b></div><div>리바인<b>${fmt(G.rebuyLeft)}</b></div><div><b>${ratingText()}</b></div>`;
+  $('meta').innerHTML=`<div><b>#${G.hand}</b></div><div>스택<b>${fmt(hero.stack)}</b></div><div>손익<b class="${net>0?'pos':net<0?'neg':''}">${net>0?'+':''}${fmt(net)}</b></div><div>리바인<b>${fmt(G.rebuyLeft)}</b></div>`;
   const winCards=new Set();if(G.showdown&&G.result)G.winners.forEach(i=>best5([...G.players[i].cards,...G.board]).forEach(c=>winCards.add(c)));
   /* seats around an oval: hero at the bottom, the rest clockwise (to the hero's left first) */
   const N=NPN(),CX=50,CY=45,RX=N>=7?38:40,RY=37;const at=k=>{const t=(90+k*360/N)*Math.PI/180;return[Math.cos(t),Math.sin(t)]};
@@ -1022,7 +1051,7 @@ function render(){syncNP();if(G.hu)renderHUBanner();
     <div class="made">${made?made.text+(made.draws.length?' · '+made.draws.join(', '):''):(hero.cards?keyOf(hero.cards[0],hero.cards[1])+` · 상위 ${Math.max(1,Math.round(handPct(hero.cards)*100))}%`:'')}</div>
     ${hero.cards&&!hero.folded?`<div class="meter" title="패 강도"><i style="width:${Math.round(heroStrength(hero)*100)}%"></i></div>`:''}${G.allinEq&&typeof G.allinEq==='object'&&G.allinEq[0]!==undefined?`<span class="peq hero">${G.allinEq[0]}%</span>`:''}`;
   const s=G.stats;const acc=s.dec?Math.round((s.good+s.ok*.5)/s.dec*100):0;
-  const L=s.lv||LV0();$('totals').innerHTML=`<span>판단 <b>${s.dec}</b></span><span class="lvsum">${['best','good','inacc','mistake','blunder'].map(k=>`<span class="lvdot ${k}" title="${LVN[k]}"></span>${L[k]}`).join(' ')}</span><span>점수 <b>${s.dec?acc+'점':'–'}</b></span><button class="link" id="histBtn">세션 요약 · 핸드 기록</button>`;
+  const L=s.lv||LV0();$('totals').innerHTML=`<span>판단 <b>${s.dec}</b></span><span class="lvsum">${['best','good','inacc','mistake','blunder'].map(k=>`<span class="lvdot ${k}" title="${LVN[k]}"></span>${L[k]}`).join(' ')}</span><span>점수 <b>${s.dec?acc+'점':'–'}</b></span><span>레이팅 <b>${ratingText()}</b></span><button class="link" id="histBtn">세션 요약 · 핸드 기록</button>`;
   $('histBtn').onclick=openHistory;if(!$('histPanel').hidden)$('histPanel').innerHTML=historyHTML(),$('hClose').onclick=()=>{$('histPanel').hidden=true}}
 
 function fbHTML(f,isLatest){
@@ -1052,15 +1081,19 @@ function renderCoach(){
   const pr=$('pRetry');if(pr){pr.onclick=retryAct;$('pGo').onclick=continueAct;pr.focus({preventScroll:true})}
   c.querySelectorAll('.histbtn').forEach(b=>b.onclick=()=>{if(chatBusy)return;G.focus=+b.dataset.i;renderCoach()});renderChat()}
 
+/* once a hand is over the fold/call/raise row has nothing to do: its place is taken by the result's own button(s) */
+function dockCTA(){const cta=$('cta');cta.innerHTML='';const el=$('resultBox').querySelector('.result>.sopts')||$('resultBox').querySelector('.result>.btn.prim');
+  if(el){cta.appendChild(el);$('controls').classList.add('over')}}
+function clearResult(){$('resultBox').innerHTML='';$('cta').innerHTML='';$('controls').classList.remove('over')}
 function renderResult(){
   if(G.hu)return renderHUResult();
   const r=G.result,hero=G.players[0];
   const busted=hero.stack<=0;let btns='';
   const allOut=G.players.every(p=>p.hero||p.eliminated);
-  if(allOut&&!busted)btns=`<button class="btn prim" id="restartBtn">새 세션 시작<small>Enter</small></button>`;
-  else if(!busted)btns=`<button class="btn prim" id="nextBtn">다음 핸드<small>Enter</small></button>`;
-  else if(G.rebuyLeft>0)btns=`<button class="btn prim" id="rebuyBtn">리바인 +${fmt(Math.min(REBUY_UNIT,G.rebuyLeft))}<small>Enter</small></button>`;
-  else btns=`<button class="btn prim" id="restartBtn">새 세션 시작<small>Enter</small></button>`;
+  if(allOut&&!busted)btns=`<button class="btn prim" id="restartBtn">새 세션 시작<small class="kh">Enter</small></button>`;
+  else if(!busted)btns=`<button class="btn prim" id="nextBtn">다음 핸드<small class="kh">Enter</small></button>`;
+  else if(G.rebuyLeft>0)btns=`<button class="btn prim" id="rebuyBtn">리바인 +${fmt(Math.min(REBUY_UNIT,G.rebuyLeft))}<small class="kh">Enter</small></button>`;
+  else btns=`<button class="btn prim" id="restartBtn">새 세션 시작<small class="kh">Enter</small></button>`;
   const handG=G.handFb.reduce((m,f)=>(m[f.gr.g]++,m),{good:0,ok:0,bad:0});
   const summary=G.handFb.length?`이번 핸드 판단: 좋음 ${handG.good} · 무난 ${handG.ok} · 실수 ${handG.bad}`:'이번 핸드는 판단할 차례가 없었습니다.';
   let over='';
@@ -1073,7 +1106,7 @@ function renderResult(){
   const nb=$('nextBtn'),rb=$('rebuyBtn'),sb=$('restartBtn');
   if(nb)nb.onclick=next;if(rb)rb.onclick=()=>{const a=Math.min(REBUY_UNIT,G.rebuyLeft);G.rebuyLeft-=a;G.invested+=a;G.players[0].stack+=a;saveSession();next()};
   if(sb)sb.onclick=()=>{try{localStorage.removeItem(SAVE_KEY)}catch(e){}startSession()};
-  (nb||rb||sb).focus({preventScroll:true})}
+  dockCTA();(nb||rb||sb).focus({preventScroll:true})}
 
 function next(){if(G.running)return;if(G.pendingNP){NP=G.pendingNP;G.pendingNP=0;try{localStorage.removeItem(SAVE_KEY)}catch(e){}startSession();return}G.running=true;G.result=null;lockControls('딜 중…');const ep=G.epoch=(G.epoch||0);playHand(ep).catch(e=>{if(e!=='abort')console.error(e)}).finally(()=>{if(ep===G.epoch)G.running=false})}
 function startSession(){G.pendingNP=0;G.decLog=[];G.history=[];initPlayers();G.hand=0;G.rebuyLeft=REBUY_TOTAL;G.invested=BUYIN;G.stats=newStats();G.result=null;next()}
@@ -1315,9 +1348,9 @@ function startHU(i){const lv=HU_LEVELS[i];
   G.hu={i,lv,hands:0,read:READ0(),bets:[],flags:{}};SBA=HU_BLINDS[0][0];BBA=HU_BLINDS[0][1];
   NP=2;G.players=[{name:'나',hero:true,stack:HU_STACK},{...lv,hero:false,stack:HU_STACK,rebuyLeft:0}];G.button=Math.floor(Math.random()*2);
   G.decLog=[];G.history=[];G.hand=0;G.rebuyLeft=0;G.invested=HU_STACK;G.stats=newStats();G.result=null;G.ticker='';
-  $('resultBox').innerHTML='';render();next()}
+  clearResult();render();next()}
 function huFinalize(){if(!G.hu)return;const R=G.hu.read,L=lifeRead();for(const k in R)L[k]=(L[k]||0)+R[k];try{localStorage.setItem(READ_KEY,JSON.stringify(L))}catch(e){}G.hu=null}
-function backToLive(){if(!G.away)return;abortHand();huFinalize();G.away=false;SBA=500;BBA=1000;$('resultBox').innerHTML='';const s=loadSession();if(s)resume(s);else startSession()}
+function backToLive(){if(!G.away)return;abortHand();huFinalize();G.away=false;SBA=500;BBA=1000;clearResult();const s=loadSession();if(s)resume(s);else startSession()}
 function huBlindStep(){if(!G.hu)return;G.hu.hands++;G.hu.bets=[];G.hu.flags={};const lvl=Math.min(HU_BLINDS.length-1,Math.floor((G.hu.hands-1)/HU_LEVEL_HANDS));
   [SBA,BBA]=HU_BLINDS[lvl];G.hu.blindLvl=lvl;huStyleForHand()}
 function renderHUBanner(){const b=$('huBanner');if(!G.hu){b.hidden=true;return}b.hidden=false;const lv=G.hu.lv,left=HU_LEVEL_HANDS-((G.hu.hands-1)%HU_LEVEL_HANDS)-1;
@@ -1341,7 +1374,7 @@ function huIntro(i){const lv=HU_LEVELS[i];
    <div class="shdr"><h2>${i+1}단계 · ${lv.name}</h2><span class="stag ${lv.boss?'realtag':''}">${lv.sty}</span></div>
    <p>${lv.desc}</p><div class="fb hint"><div class="top"><span class="verdict">공략 힌트</span></div><p>${lv.tip}</p></div>
    <p class="ctx">상대가 당신을 읽는 정도 <span class="readbar inline"><i style="width:${lv.read*100}%"></i></span> ${lv.read===0?'읽지 않음':lv.read<.5?'조금':lv.read<.8?'많이':'전부'}. 상대는 쇼다운에서 본 카드와 당신의 액션만으로 판단합니다. 대결 중 "상대가 읽은 당신"에서 확인할 수 있어요.</p>
-   <button class="btn prim" id="huGo">대결 시작<small>Enter</small></button></div>`;
+   <button class="btn prim" id="huGo">대결 시작<small class="kh">Enter</small></button></div>`;
   $('huBack').onclick=huMap;$('huGo').onclick=()=>{startHU(i);setMode('hu')};$('huGo').focus({preventScroll:true})}
 function renderHUResult(){const r=G.result,hero=G.players[0],bot=G.players[1];const won=bot.stack<=0&&hero.stack>0,lost=hero.stack<=0;
   const handG=G.handFb.reduce((m,f)=>(m[f.gr.g]++,m),{good:0,ok:0,bad:0});
@@ -1352,11 +1385,11 @@ function renderHUResult(){const r=G.result,hero=G.players[0],bot=G.players[1];co
     body=`<p><strong>${won?`${G.hu.lv.name} 상대로 승리! ${STAR(st)}`:`${G.hu.lv.name}에게 졌습니다.`}</strong> ${G.hu.hands}핸드 · 판단 점수 ${score}점 (좋음 ${s.good} · 무난 ${s.ok} · 실수 ${s.bad})</p>
      <div class="ctx">상대가 마지막에 읽은 당신</div><ul>${readNotes().map(n=>`<li>${n}</li>`).join('')}</ul>`;
     const nextOpen=won&&G.hu.i<HU_LEVELS.length-1;
-    btns=`<div class="sopts"><button class="btn" id="huRetry">다시 도전</button>${nextOpen?`<button class="btn prim" id="huNext">다음 단계<small>Enter</small></button>`:''}<button class="btn" id="huList">단계 목록</button></div>`}
-  else btns=`<button class="btn prim" id="nextBtn">다음 핸드<small>Enter</small></button>`;
+    btns=`<div class="sopts"><button class="btn" id="huRetry">다시 도전</button>${nextOpen?`<button class="btn prim" id="huNext">다음 단계<small class="kh">Enter</small></button>`:''}<button class="btn" id="huList">단계 목록</button></div>`}
+  else btns=`<button class="btn prim" id="nextBtn">다음 핸드<small class="kh">Enter</small></button>`;
   $('resultBox').innerHTML=`<div class="result"><h2>${r.title}</h2><ul>${r.lines.filter(l=>!/리바인|탈락/.test(l)).map(l=>`<li>${l}</li>`).join('')}</ul>
     <div class="ctx" style="font-size:13px">이번 핸드 <strong style="color:${r.heroDelta>0?'var(--good)':r.heroDelta<0?'var(--bad)':'var(--ink)'}">${r.heroDelta>0?'+':''}${fmt(r.heroDelta)}</strong> · ${summary}</div>${body}${btns}</div>`;
-  lockControls('');renderHUBanner();
+  lockControls('');renderHUBanner();dockCTA();
   const nb=$('nextBtn');if(nb)nb.onclick=next;
   const i=G.hu.i;const rt=$('huRetry');if(rt)rt.onclick=()=>{startHU(i);setMode('hu')};
   const nx=$('huNext');if(nx)nx.onclick=()=>{huFinalize();setMode('hu');huIntro(i+1)};
@@ -1414,13 +1447,13 @@ function renderStage(){const s=SV.stage,n=s.nodes[SV.node];const done=SV.chosen!
      ${n.lesson?`<p>${n.lesson}</p>`:''}
      <p class="note">${(n.outcome&&n.outcome[o.id])||n.outcomeDefault||''}</p></div>`;
     const nx=o.next&&s.nodes[o.next];
-    if(nx)h+=`<button class="btn prim" id="sNext">다음 장면<small>Enter</small></button>`;
+    if(nx)h+=`<button class="btn prim" id="sNext">다음 장면<small class="kh">Enter</small></button>`;
     else{const all=[...SV.picks.map(x=>x.stars),o.stars];const got=Math.min(...all);const p=sprog();const prev=p[s.id]||0;if(got>prev){p[s.id]=got;ssave(p)}
       const idx=STORY.stages.indexOf(s),nextS=STORY.stages[idx+1];
       h+=`<div class="result"><h2>${got?`스테이지 클리어 ${STAR(got)}`:'실패 · 다시 도전해 보세요'}</h2>
         <p class="ctx">스테이지 별점은 이 스테이지에서 내린 결정 중 가장 낮은 별점입니다.${prev&&got<=prev?` 최고 기록 ${STAR(prev)}은 유지돼요.`:''}</p>
         ${s.real_play?`<p><strong>실제로는</strong> ${s.real_play}</p><p class="ctx">핸드 기록: <a href="${s.source}" target="_blank" rel="noopener">PokerNews</a> · 상대 범위와 대응은 계산을 위한 가정입니다.</p>`:''}
-        <div class="sopts"><button class="btn" id="sRetry">다시 하기</button>${got&&nextS?`<button class="btn prim" id="sGo">다음 스테이지<small>Enter</small></button>`:''}</div></div>`}}
+        <div class="sopts"><button class="btn" id="sRetry">다시 하기</button>${got&&nextS?`<button class="btn prim" id="sGo">다음 스테이지<small class="kh">Enter</small></button>`:''}</div></div>`}}
   h+=`</div>`;
   $('storyMode').innerHTML=h;
   $('sBack').onclick=()=>{SV.stage=null;storyMap()};
@@ -1534,22 +1567,22 @@ function buildItems(st){const z=st.quiz;if(st.special==='daily')return dailyItem
 function startLesson(id){const st=id==='daily'?DAILY:id==='place'?PLACE:TUT.stages.find(s=>s.id===id);LV={st,items:null,i:0,ok:0,picked:null};renderLesson();window.scrollTo({top:0})}
 function renderLesson(){const st=LV.st,idx=TUT.stages.indexOf(st),sp=st.special;let h=`<div class="sbar"><button class="link" id="sBack">← 스테이지 목록</button><span class="ctx">${sp?st.tag:`튜토리얼 ${idx+1} / ${TUT.stages.length}`}</span></div>
   <div class="sstage"><div class="shdr"><h2>${sp?'':idx+1+'. '}${st.title}</h2><span class="stag">${st.tag}</span></div>`;
-  if(!LV.items){h+=`<div class="tintro">${st.intro==='__RANKS__'?tutRanksIntro():st.intro}</div><button class="btn prim" id="tStart">연습 시작<small>Enter</small></button>`}
+  if(!LV.items){h+=`<div class="tintro">${st.intro==='__RANKS__'?tutRanksIntro():st.intro}</div><button class="btn prim" id="tStart">연습 시작<small class="kh">Enter</small></button>`}
   else if(LV.i<LV.items.length){const it=LV.items[LV.i],done=LV.picked!==null;
     h+=`<div class="tprog"><span>${LV.i+1} / ${LV.items.length}</span><span>맞힘 ${LV.ok}</span></div><div class="tq"><p class="situ">${it.q}</p>${it.show||''}</div>
       <div class="sopts">${it.options.map((o,j)=>`<button class="btn sopt ${done&&j===it.answer?'bestopt':''} ${done&&j===LV.picked?'picked':''}" data-j="${j}" ${done?'disabled':''}>${o}</button>`).join('')}</div>`;
     if(done){const right=LV.picked===it.answer;h+=`<div class="fb ${right?'good':'bad'}"><div class="top"><span class="verdict">${right?'정답':'오답'}</span>${right?'':`<span class="ctx">정답: ${it.options[it.answer]}</span>`}</div><p>${it.why||''}</p>${it.after||''}</div>
-      <button class="btn prim" id="tNext">${LV.i+1<LV.items.length?'다음 문제':'결과 보기'}<small>Enter</small></button>`}}
+      <button class="btn prim" id="tNext">${LV.i+1<LV.items.length?'다음 문제':'결과 보기'}<small class="kh">Enter</small></button>`}}
   else if(sp==='daily'){const before=dailyState();const s2=dailyRecord(LV.ok);
     h+=`<div class="result"><h2>오늘의 문제 ${LV.ok} / ${LV.items.length}</h2><p><strong>${s2.streak}일 연속</strong> · 최고 ${s2.best}일</p><p class="ctx">${before.doneToday?`오늘 첫 기록(${before.score}/5)이 그대로 남아요. 다시 푼 건 연습이에요.`:'내일 또 새 문제가 나와요.'}</p>
-      <div class="sopts"><button class="btn" id="sRetry">다시 풀기</button><button class="btn prim" id="tList">목록으로<small>Enter</small></button></div></div>`}
+      <div class="sopts"><button class="btn" id="sRetry">다시 풀기</button><button class="btn prim" id="tList">목록으로<small class="kh">Enter</small></button></div></div>`}
   else if(sp==='place'){const pass=LV.ok>=5;if(pass){const p=sprog();TUT.stages.forEach(t=>{p[t.id]=Math.max(p[t.id]||0,1)});ssave(p)}
     h+=`<div class="result"><h2>${LV.items.length}문제 중 ${LV.ok}개</h2><p>${pass?'기본은 충분해요. 튜토리얼 레슨이 모두 열렸어요. 1장이나 헤즈업으로 가 보세요.':'튜토리얼부터 차근차근 하는 걸 추천해요. 족보와 룰을 확실히 해 두면 실전이 훨씬 쉬워져요.'}</p>
-      <div class="sopts">${pass?`<button class="btn prim" id="tCh1">1장으로<small>Enter</small></button>`:`<button class="btn prim" id="tT1">튜토리얼 시작<small>Enter</small></button>`}<button class="btn" id="tList">목록으로</button></div></div>`}
+      <div class="sopts">${pass?`<button class="btn prim" id="tCh1">1장으로<small class="kh">Enter</small></button>`:`<button class="btn prim" id="tT1">튜토리얼 시작<small class="kh">Enter</small></button>`}<button class="btn" id="tList">목록으로</button></div></div>`}
   else{const n=LV.items.length,acc=LV.ok/n,stars=acc>=.9?3:acc>=.7?2:acc>=.5?1:0;const p=sprog();const prev=p[st.id]||0;if(stars>prev){p[st.id]=stars;ssave(p)}
     const nx=TUT.stages[idx+1];
     h+=`<div class="result"><h2>${stars?`${STAR(stars)} ${n}문제 중 ${LV.ok}개 정답`:`${n}문제 중 ${LV.ok}개 · 다시 해 볼까요?`}</h2><p class="ctx">90% 이상 ★3 · 70% ★2 · 50% ★1. 문제는 매번 새로 나와요.</p>
-      <div class="sopts"><button class="btn" id="sRetry">다시 하기</button>${stars&&nx?`<button class="btn prim" id="sGo">다음 레슨<small>Enter</small></button>`:''}${stars&&!nx?`<button class="btn prim" id="tCh1">1장으로<small>Enter</small></button>`:''}</div></div>`}
+      <div class="sopts"><button class="btn" id="sRetry">다시 하기</button>${stars&&nx?`<button class="btn prim" id="sGo">다음 레슨<small class="kh">Enter</small></button>`:''}${stars&&!nx?`<button class="btn prim" id="tCh1">1장으로<small class="kh">Enter</small></button>`:''}</div></div>`}
   h+='</div>';$('storyMode').innerHTML=h;
   $('sBack').onclick=()=>{LV=null;storyMap()};
   const sb=$('tStart');if(sb)sb.onclick=()=>{LV.items=buildItems(st);renderLesson()};

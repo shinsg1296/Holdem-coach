@@ -64,7 +64,7 @@ R('신고했습니다. Claude 대화창에서 "신고한 해설 확인해줘"라
 
 # ---- settings panel ----
 R('<span class="hbtns">',
-  '<span class="hbtns"><button class="link" id="setBtn" type="button" aria-expanded="false" aria-controls="settings">설정 · 신고 목록</button>')
+  '<span class="hbtns"><button class="link" id="setBtn" type="button" aria-expanded="false" aria-controls="settings">설정</button>')
 R('  <div id="welcome"',
   """  <section class="settings" id="settings" hidden>
     <div class="sgroup">
